@@ -32,9 +32,17 @@ import type {
 import type { RecentProduct } from "../lib/recent-products";
 import type { Session } from "../extension/messages";
 import { request, subscribe } from "../extension/client";
+import { daySummary } from "../lib/day-summary";
+import {
+  changeFoodQuantity,
+  changeFoodUnit,
+  createFoodPortion,
+  foodUnits,
+} from "../lib/food-portions";
+import type { FoodPortion } from "../lib/food-portions";
 import brandIcon from "./brand.svg";
 
-type Selected = { id: string; product: Product };
+type Selected = { id: string; product: Product; portion: FoodPortion };
 type Theme = "light" | "dark";
 const meals: { id: MealName; label: string; emoji: string }[] = [
   { id: "breakfast", label: "Breakfast", emoji: "☕" },
@@ -85,7 +93,6 @@ export default function Desk() {
   const [recentError, setRecentError] = useState("");
   const [recentRevision, setRecentRevision] = useState(0);
   const [selected, setSelected] = useState<Selected | null>(null);
-  const [amount, setAmount] = useState("100");
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState<Entry | null>(null);
   const [revision, setRevision] = useState(0);
@@ -233,7 +240,7 @@ export default function Desk() {
     document.body.style.overflow = "hidden";
     const dialog = document.querySelector<HTMLElement>("[role=dialog]");
     const selector =
-      "button:not(:disabled), a[href], input:not(:disabled), [tabindex='0']";
+      "button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), [tabindex='0']";
     const first = dialog?.querySelector<HTMLElement>(selector);
     first?.focus();
     function close(event: KeyboardEvent) {
@@ -322,14 +329,12 @@ export default function Desk() {
     setQuery("");
     setSelected(null);
     setResults([]);
-    setAmount("100");
     setSearchOpen(true);
   }
 
   function selectRecent(result: RecentProduct) {
-    setSelected({ id: result.product_id, product: result.product });
-    const quantity = String(result.amount);
-    setAmount(quantity);
+    const portion = createFoodPortion(result.amount);
+    setSelected({ id: result.product_id, product: result.product, portion });
   }
 
   async function selectProduct(result: SearchProduct) {
@@ -339,7 +344,8 @@ export default function Desk() {
         type: "product",
         productId: result.product_id,
       });
-      setSelected({ id: result.product_id, product });
+      const portion = createFoodPortion(100);
+      setSelected({ id: result.product_id, product, portion });
     } catch (error) {
       reportError(error);
     } finally {
@@ -347,17 +353,37 @@ export default function Desk() {
     }
   }
 
+  function changeQuantity(quantity: string) {
+    if (!selected || !selectedUnit) return;
+    const portion = changeFoodQuantity(selected.portion, selectedUnit, quantity);
+    setSelected({ ...selected, portion });
+  }
+
+  function changeUnit(value: string) {
+    if (!selected) return;
+    const index = Number(value);
+    const unit = selectedUnits[index];
+    const portion = changeFoodUnit(selected.portion, unit, index);
+    setSelected({ ...selected, portion });
+  }
+
   async function addFood(event: React.FormEvent) {
     event.preventDefault();
-    if (!selected) return;
-    const numericAmount = Number(amount);
+    if (!selected || !selectedUnit) return;
+    const portion = selectedUnit.serving
+      ? {
+          serving: selectedUnit.serving,
+          quantity: selected.portion.amount / selectedUnit.amount,
+        }
+      : null;
     setBusy(true);
     setError("");
     try {
       await request({
         type: "add-entry",
         productId: selected.id,
-        amount: numericAmount,
+        amount: selected.portion.amount,
+        portion,
         meal,
         date,
       });
@@ -406,22 +432,14 @@ export default function Desk() {
   }
 
   const summary = day?.summary;
-  let eaten = 0;
-  const totals: Record<string, number> = {};
-  if (summary) {
-    for (const item of Object.values(summary.meals)) {
-      for (const [key, value] of Object.entries(item.nutrients))
-        totals[key] = (totals[key] ?? 0) + value;
-    }
-    eaten = totals["energy.energy"] ?? 0;
-  }
-  const goal = summary?.goals["energy.energy"] ?? 0;
-  const activity = summary?.consume_activity_energy
-    ? summary.activity_energy
-    : 0;
-  const remaining = goal + activity - eaten;
+  const overview = summary ? daySummary(summary) : null;
+  const totals = overview?.totals ?? {};
+  const eaten = overview?.eaten ?? 0;
+  const goal = overview?.goal ?? 0;
+  const burned = overview?.burned ?? 0;
+  const remaining = overview?.remaining ?? 0;
   const absoluteRemaining = Math.abs(remaining);
-  const filled = goal > 0 ? Math.min(eaten / (goal + activity), 1) : 0;
+  const filled = overview?.filled ?? 0;
   const ringDash = `${filled * 75} 100`;
   const today = localDate();
   const dateObject = new Date(`${date || today}T12:00:00`);
@@ -432,6 +450,12 @@ export default function Desk() {
   });
   const unit =
     summary?.units.unit_energy ?? session.profile?.unit_energy ?? "kcal";
+  const selectedUnits = selected ? foodUnits(selected.product) : [];
+  const selectedUnit = selected ? selectedUnits[selected.portion.unitIndex] : null;
+  const selectedAmount = selected?.portion.amount ?? 0;
+  const selectedAmountLabel = selectedAmount.toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  });
   const greeting = session.profile?.first_name
     ? `${session.profile.first_name}’s diary`
     : "Your daily diary";
@@ -650,8 +674,8 @@ export default function Desk() {
                         </div>
                       </div>
                       <div className="energy-stat">
-                        <strong>{summary ? number(activity) : "—"}</strong>
-                        <span>Activity added</span>
+                        <strong>{summary ? number(burned) : "—"}</strong>
+                        <span>Burned</span>
                       </div>
                     </div>
                     <p className="daily-goal">
@@ -670,7 +694,7 @@ export default function Desk() {
                         { name: "Fat", key: "nutrient.fat" },
                       ].map((macro) => {
                         const value = totals[macro.key] ?? 0;
-                        const target = summary?.goals[macro.key] ?? 0;
+                        const target = overview?.targets[macro.key] ?? 0;
                         const percent =
                           target > 0
                             ? Math.min((value / target) * 100, 100)
@@ -983,20 +1007,40 @@ export default function Desk() {
             className="dialog food-dialog"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="food-title"
+            aria-label={selected ? "Choose food portion" : "Search food"}
             onClick={(event) => event.stopPropagation()}
           >
-            <button
-              className="dialog-close"
-              onClick={() => setSearchOpen(false)}
-              aria-label="Close food search"
-            >
-              <X size={20} />
-            </button>
-            <div className="eyebrow">A LITTLE SOMETHING GOOD</div>
-            <h2 id="food-title">
-              {selected ? "Make it your portion." : "What’s on the menu?"}
-            </h2>
+            <div className="food-dialog-header">
+              {selected ? (
+                <button
+                  className="text-button back"
+                  type="button"
+                  onClick={() => setSelected(null)}
+                >
+                  <ArrowLeft size={15} />
+                  Back to search
+                </button>
+              ) : (
+                <label className="search-field">
+                  <Search size={20} />
+                  <input
+                    autoFocus
+                    placeholder="Search food, brand, or barcode"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    aria-label="Search food"
+                  />
+                  {searching && <LoaderCircle className="spin" size={17} />}
+                </label>
+              )}
+              <button
+                className="dialog-close"
+                onClick={() => setSearchOpen(false)}
+                aria-label="Close food search"
+              >
+                <X size={20} />
+              </button>
+            </div>
             {error && (
               <p className="modal-error" role="alert">
                 {error}
@@ -1015,14 +1059,6 @@ export default function Desk() {
             </div>
             {selected ? (
               <form onSubmit={addFood}>
-                <button
-                  className="text-button back"
-                  type="button"
-                  onClick={() => setSelected(null)}
-                >
-                  <ArrowLeft size={15} />
-                  Back to search
-                </button>
                 <div className="selected-product">
                   <span className="food-symbol">
                     <Utensils size={23} />
@@ -1032,21 +1068,49 @@ export default function Desk() {
                     <p>{selected.product.producer}</p>
                   </div>
                 </div>
-                <label className="amount-label" htmlFor="food-amount">
-                  Amount ({selected.product.base_unit})
-                </label>
-                <input
-                  autoFocus
-                  className="amount-input"
-                  id="food-amount"
-                  type="number"
-                  min="0.01"
-                  max="100000"
-                  step="any"
-                  required
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                />
+                <div className="portion-fields">
+                  <div>
+                    <label className="amount-label" htmlFor="food-amount">
+                      Amount{selectedUnits.length === 1 && ` (${selected.product.base_unit})`}
+                    </label>
+                    <input
+                      autoFocus
+                      className="amount-input"
+                      id="food-amount"
+                      type="number"
+                      min={0.01 / (selectedUnit?.amount ?? 1)}
+                      max={100000 / (selectedUnit?.amount ?? 1)}
+                      step="any"
+                      required
+                      value={selected.portion.quantity}
+                      onChange={(event) => changeQuantity(event.target.value)}
+                    />
+                  </div>
+                  {selectedUnits.length > 1 && (
+                    <div>
+                      <label className="amount-label" htmlFor="food-unit">
+                        Unit / portion
+                      </label>
+                      <select
+                        className="amount-input"
+                        id="food-unit"
+                        value={selected.portion.unitIndex}
+                        onChange={(event) => changeUnit(event.target.value)}
+                      >
+                        {selectedUnits.map((option, index) => (
+                          <option key={index} value={index}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                {selectedUnit?.serving && (
+                  <p className="portion-equivalent">
+                    {selectedAmountLabel} {selected.product.base_unit} total
+                  </p>
+                )}
                 <div className="portion-nutrients">
                   {[
                     { label: unit, key: "energy.energy" },
@@ -1056,8 +1120,7 @@ export default function Desk() {
                   ].map((nutrient) => {
                     const perUnit =
                       selected.product.nutrients[nutrient.key] ?? 0;
-                    const quantity = Number(amount);
-                    const value = number(perUnit * quantity);
+                    const value = number(perUnit * selectedAmount);
                     return (
                       <div key={nutrient.key}>
                         <strong>{value}</strong>
@@ -1077,17 +1140,6 @@ export default function Desk() {
               </form>
             ) : (
               <>
-                <label className="search-field">
-                  <Search size={20} />
-                  <input
-                    autoFocus
-                    placeholder="Search food, brand, or barcode"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    aria-label="Search food"
-                  />
-                  {searching && <LoaderCircle className="spin" size={17} />}
-                </label>
                 <div className="search-results">
                   {query.trim().length === 0 && (
                     <>

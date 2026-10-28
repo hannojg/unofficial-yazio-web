@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nutrition Desk",
-  "version": "2.1.1",
+  "version": "2.2.1",
   "minimum_chrome_version": "120",
   "description": "Your YAZIO food diary, recent foods, and water tracking in a full-size browser tab.",
   "permissions": [

@@ -30,11 +30,14 @@ const dayCommand = command("day", { date });
 const recentsCommand = command("recents", {});
 const searchCommand = command("search", { query });
 const productCommand = command("product", { productId: uuid });
+const portionSchema = z.object({ serving: text, quantity: positive });
+const nullablePortion = portionSchema.nullable();
 const addCommand = command("add-entry", {
   productId: uuid,
   amount,
   meal: mealSchema,
   date,
+  portion: nullablePortion,
 });
 const removeCommand = command("remove-entry", { id: uuid, bucket });
 const waterCommand = command("water", { date, amountMl: water });

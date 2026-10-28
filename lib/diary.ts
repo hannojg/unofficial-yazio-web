@@ -96,8 +96,8 @@ export async function runDiaryCommand(command: DiaryCommand, api: YazioApi) {
             amount: command.amount,
             daytime: command.meal,
             date: `${command.date} 12:00:00`,
-            serving: null,
-            serving_quantity: null,
+            serving: command.portion?.serving ?? null,
+            serving_quantity: command.portion?.quantity ?? null,
           },
         ],
       });

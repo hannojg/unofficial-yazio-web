@@ -82,3 +82,10 @@ Extension browser verification — 28 October 2026
 - Reloading the dashboard retains the connection and does not return to waiting for sign-in.
 - Type checking, the production build, and all 25 isolated tests pass. No live diary or water mutations were made.
 - Session rotation was tested with synthetic tokens; an actual expiry and refresh of a real YAZIO token was not forced.
+
+Activity budget and food portions — 28 October 2026
+The daily-summary widget already includes activity in goals["energy.energy"] when consume_activity_energy is enabled. Its macro goals remain unadjusted. Read-only live comparisons with GET /user/goals?date=YYYY-MM-DD confirmed that the widget's energy goal equals the base goal plus activity_energy, while the macro goals are identical in both responses. GET /user/settings confirmed that consume_activity_calories agrees with the widget flag. These diagnostic requests and logs were removed after investigation.
+
+The desktop now subtracts eaten energy directly from the widget's energy goal and uses that same goal for ring progress. Macro targets scale by the adjusted energy goal divided by the base goal (adjusted goal minus included activity). Burned always shows activity_energy, even when inclusion is disabled. The account preference is not changed. Android iz2.t and uef.C separately display burned energy and conditionally include it in the budget; the distinction is also documented at https://help.yazio.com/hc/en-us/articles/360002474498-Why-do-my-calorie-goal-and-nutrient-goals-change.
+
+Product servings supply their conversion amounts in the product's base unit. For example, a public cheese product supplies portion=40 g, slice.small=15 g, and slice=30 g. The picker exposes these alongside the base unit. It retains the exact base amount during unit changes and uses that amount for nutrient previews and writes. A chosen portion also supplies serving and serving_quantity in the consumed-product payload, matching Android vz3's serializer. Tests cover fractional portions, repeated unit changes, liquids, write metadata, and activity inclusion enabled/disabled. No live diary writes were used for verification.

@@ -60,6 +60,7 @@ test("food additions preserve quantity, meal, and YAZIO's timestamp format", asy
     amount: 160,
     meal: "lunch",
     date: "2026-10-28",
+    portion: null,
   });
   await runDiaryCommand(command, async (path, init) => {
     calls.push({ path, init });
@@ -70,7 +71,28 @@ test("food additions preserve quantity, meal, and YAZIO's timestamp format", asy
   assert.equal(payload.products[0].amount, 160);
   assert.equal(payload.products[0].daytime, "lunch");
   assert.equal(payload.products[0].date, "2026-10-28 12:00:00");
+  assert.equal(payload.products[0].serving, null);
+  assert.equal(payload.products[0].serving_quantity, null);
   assert.match(payload.products[0].id, /^[0-9a-f-]{36}$/);
+});
+
+test("food portions send base units and the chosen serving metadata to YAZIO", async () => {
+  calls.length = 0;
+  const command = commandSchema.parse({
+    type: "add-entry",
+    productId: food,
+    amount: 45,
+    portion: { serving: "slice", quantity: 1.5 },
+    meal: "lunch",
+    date: "2026-10-28",
+  });
+  await runDiaryCommand(command, async (path, init) => {
+    calls.push({ path, init });
+  });
+  const payload = JSON.parse(calls[0].init.body);
+  assert.equal(payload.products[0].amount, 45);
+  assert.equal(payload.products[0].serving, "slice");
+  assert.equal(payload.products[0].serving_quantity, 1.5);
 });
 
 test("removing an entry sends a single UUID in the requested bucket", async () => {

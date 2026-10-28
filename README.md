@@ -24,12 +24,12 @@ Keep `dist` in place: Chrome loads the unpacked extension from that folder. Afte
 - Browse diary dates, daily energy / macro totals, and meals.
 - View synced recent foods with the last-used quantity prefilled.
 - Search YAZIO using your account's food database country and sex.
-- Review product portions before logging them.
+- Choose a food's base unit or its YAZIO portions, including fractional quantities, before logging it. Switching units preserves the food amount and nutrition totals.
 - Remove entries with confirmation and track water in 250 ml increments.
 - Renew sessions through YAZIO's official web token endpoint.
 - Switch between the YAZIO-style light and dark themes.
 
-Recipe rows show an em dash for energy; meal and daily totals come from YAZIO. Unit preferences remain partly supported: the energy unit label is read from the API, water uses litres/ml, food amounts use each product's base unit, and macros use grams. Complete unit conversion and profile / goal editing are not implemented.
+Recipe rows show an em dash for energy; meal and daily totals come from YAZIO. Unit preferences remain partly supported: the energy unit label is read from the API, water uses litres/ml, foods offer their base unit and API-provided portions, and macros use grams. Complete unit conversion and profile / goal editing are not implemented.
 
 ## How it works
 
