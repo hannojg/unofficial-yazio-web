@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2022",
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "es2022"
     ],
-    "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -16,38 +15,16 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
     "types": [
+      "chrome",
       "node",
-      "@cloudflare/workers-types"
+      "vite/client"
     ]
   },
   "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": [
-    "node_modules",
-    "examples",
-    "dist",
-    ".vinext",
-    ".wrangler",
-    ".sites-runtime",
-    "outputs",
-    "work"
+    "app",
+    "lib",
+    "extension",
+    "vite.config.ts"
   ]
 }

@@ -1,8 +1,5 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
   BookOpen,
@@ -32,13 +29,13 @@ import type {
   Entry,
   MealName,
   Product,
-  Profile,
   SearchProduct,
 } from "../lib/yazio";
 
 import type { RecentProduct } from "../lib/recent-products";
+import type { Session } from "../extension/messages";
+import { request, subscribe } from "../extension/client";
 
-type Session = { connected: boolean; profile?: Profile };
 type Selected = { id: string; product: Product };
 type Theme = "light" | "dark";
 const meals: { id: MealName; label: string; emoji: string }[] = [
@@ -62,25 +59,6 @@ function number(value: number | undefined) {
   return rounded.toLocaleString();
 }
 
-async function request<T>(
-  path: string,
-  method = "GET",
-  value?: unknown,
-  signal?: AbortSignal,
-): Promise<T> {
-  const body = value === undefined ? undefined : JSON.stringify(value);
-  const response = await fetch(path, {
-    method,
-    body,
-    signal,
-    headers: { "Content-Type": "application/json" },
-  });
-  const text = await response.text();
-  const result: T & { error?: string } = JSON.parse(text);
-  if (response.ok) return result;
-  throw new Error(result.error ?? "The request could not be completed.");
-}
-
 function message(error: unknown) {
   if (error instanceof Error) return error.message;
   return "Something went wrong. Please try again.";
@@ -93,9 +71,10 @@ export default function Desk() {
   const [date, setDate] = useState("");
   const [day, setDay] = useState<Day | null>(null);
   const [loading, setLoading] = useState(false);
-  const [helper, setHelper] = useState(false);
   const [setup, setSetup] = useState(false);
-  const [pairing, setPairing] = useState(false);
+  const [pairingUntil, setPairingUntil] = useState<number | null>(null);
+  const pairing = pairingUntil !== null;
+  const sessionRevision = useRef(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -137,10 +116,12 @@ export default function Desk() {
   }, []);
 
   const syncSession = useCallback(async () => {
+    const revision = ++sessionRevision.current;
     try {
-      const next = await request<Session>("/api/session");
+      const next = await request({ type: "session" });
+      if (sessionRevision.current !== revision) return;
       setSession(next);
-      setPairing(false);
+      setPairingUntil(next.pairingExpires ?? null);
     } catch (error) {
       reportError(error);
     } finally {
@@ -152,23 +133,17 @@ export default function Desk() {
     const today = localDate();
     setDate(today);
     void syncSession();
-    function receive(event: MessageEvent) {
-      if (event.source !== window || event.origin !== window.location.origin)
-        return;
-      if (event.data?.type === "ND_HELPER_READY") setHelper(true);
-      if (event.data?.type === "ND_CONNECTED") {
+    const unsubscribe = subscribe((event) => {
+      if (event.kind === "ND_SESSION_CHANGED") {
         setSetup(false);
-        setNotice("Your YAZIO account is connected. Welcome to your desk.");
         void syncSession();
       }
-      if (event.data?.type === "ND_ERROR") {
-        setPairing(false);
-        setError(event.data.error);
+      if (event.kind === "ND_PAIR_ERROR") {
+        setPairingUntil(null);
+        setError(event.error);
       }
-    }
-    window.addEventListener("message", receive);
-    window.postMessage({ type: "ND_HELPER_PING" }, window.location.origin);
-    return () => window.removeEventListener("message", receive);
+    });
+    return unsubscribe;
   }, [syncSession]);
 
   useEffect(() => {
@@ -181,12 +156,7 @@ export default function Desk() {
     setLoading(true);
     async function loadDay() {
       try {
-        const next = await request<Day>(
-          `/api/day?date=${date}`,
-          "GET",
-          undefined,
-          controller.signal,
-        );
+        const next = await request({ type: "day", date }, controller.signal);
         setDay(next);
       } catch (error) {
         if (!controller.signal.aborted) reportError(error);
@@ -208,12 +178,9 @@ export default function Desk() {
     setSearching(true);
     async function search() {
       const trimmed = query.trim();
-      const encoded = encodeURIComponent(trimmed);
       try {
-        const next = await request<SearchProduct[]>(
-          `/api/search?q=${encoded}`,
-          "GET",
-          undefined,
+        const next = await request(
+          { type: "search", query: trimmed },
           controller.signal,
         );
         setResults(next);
@@ -240,12 +207,7 @@ export default function Desk() {
     setRecentError("");
     async function loadRecents() {
       try {
-        const next = await request<RecentProduct[]>(
-          "/api/recents",
-          "GET",
-          undefined,
-          controller.signal,
-        );
+        const next = await request({ type: "recents" }, controller.signal);
         setRecents(next);
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -304,28 +266,33 @@ export default function Desk() {
   }, [searchOpen, setup, removing, busy]);
 
   useEffect(() => {
-    if (!pairing) return;
+    if (pairingUntil === null) return;
+    const remaining = Math.max(pairingUntil - Date.now(), 0);
     const timer = setTimeout(() => {
-      setPairing(false);
+      setPairingUntil(null);
       setError("The connection expired. Click Connect and sign in again.");
-      window.postMessage({ type: "ND_CANCEL" }, window.location.origin);
-    }, 600000);
+      void request({ type: "cancel-pair" }).catch(reportError);
+    }, remaining);
     return () => clearTimeout(timer);
-  }, [pairing]);
+  }, [pairingUntil, reportError]);
 
   async function connect() {
-    if (!helper) {
-      setSetup(true);
-      return;
-    }
     try {
       setError("");
-      const pair = await request<{ nonce: string }>("/api/connect", "POST", {});
-      setPairing(true);
-      window.postMessage(
-        { type: "ND_CONNECT", nonce: pair.nonce },
-        window.location.origin,
-      );
+      const expires = Date.now() + 600000;
+      setPairingUntil(expires);
+      await request({ type: "connect" });
+      await syncSession();
+    } catch (error) {
+      setPairingUntil(null);
+      reportError(error);
+    }
+  }
+
+  async function cancelPair() {
+    try {
+      await request({ type: "cancel-pair" });
+      setPairingUntil(null);
     } catch (error) {
       reportError(error);
     }
@@ -333,12 +300,11 @@ export default function Desk() {
 
   async function disconnect() {
     try {
-      await request("/api/session", "DELETE");
+      await request({ type: "disconnect" });
       setSession({ connected: false });
       setDay(null);
       setSetup(false);
-      setPairing(false);
-      window.postMessage({ type: "ND_CANCEL" }, window.location.origin);
+      setPairingUntil(null);
       setNotice("Account disconnected from this browser.");
     } catch (error) {
       reportError(error);
@@ -371,9 +337,10 @@ export default function Desk() {
   async function selectProduct(result: SearchProduct) {
     setBusy(true);
     try {
-      const product = await request<Product>(
-        `/api/product/${result.product_id}`,
-      );
+      const product = await request({
+        type: "product",
+        productId: result.product_id,
+      });
       setSelected({ id: result.product_id, product });
     } catch (error) {
       reportError(error);
@@ -389,7 +356,8 @@ export default function Desk() {
     setBusy(true);
     setError("");
     try {
-      await request("/api/entries", "POST", {
+      await request({
+        type: "add-entry",
         productId: selected.id,
         amount: numericAmount,
         meal,
@@ -409,7 +377,8 @@ export default function Desk() {
     if (!removing) return;
     setBusy(true);
     try {
-      await request("/api/entries", "DELETE", {
+      await request({
+        type: "remove-entry",
         id: removing.id,
         bucket: removing.bucket,
       });
@@ -428,7 +397,7 @@ export default function Desk() {
     setBusy(true);
     const amountMl = day.summary.water_intake + 250;
     try {
-      await request("/api/water", "POST", { date, amountMl });
+      await request({ type: "water", date, amountMl });
       setRevision((value) => value + 1);
       setNotice("250 ml of water logged.");
     } catch (error) {
@@ -482,7 +451,11 @@ export default function Desk() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Nutrition Desk home">
+        <a
+          className="brand"
+          href="./index.html"
+          aria-label="Nutrition Desk home"
+        >
           <span className="brand-mark">
             <BookOpen size={23} strokeWidth={2.6} />
           </span>
@@ -523,7 +496,11 @@ export default function Desk() {
           </button>
           <div className="private-note">
             <ShieldCheck size={14} />
-            Private, just for you
+            <span>
+              Stored locally.
+              <br />
+              Synced only with YAZIO.
+            </span>
           </div>
         </div>
       </aside>
@@ -847,7 +824,7 @@ export default function Desk() {
                   </h2>
                   <p>
                     Bring your food diary to the big screen. Sign in on YAZIO
-                    with Apple, then pick up right here.
+                    and pick up right here.
                   </p>
                   <button
                     className="primary full"
@@ -864,10 +841,6 @@ export default function Desk() {
                       : "Connect your account"}
                     {pairing ? null : <ArrowRight size={16} />}
                   </button>
-                  <div className="card-footnote">
-                    <ShieldCheck size={13} />
-                    Your Apple password stays with Apple.
-                  </div>
                 </section>
               )}
               <section className="card water-card">
@@ -962,8 +935,8 @@ export default function Desk() {
               <>
                 <p>
                   You’re connected as {session.profile?.first_name}. Your
-                  session is encrypted and tied to your private account.
-                  Disconnecting removes it from this browser.
+                  session stays in this browser’s extension storage.
+                  Disconnecting removes the local session.
                 </p>
                 <button className="secondary full" onClick={disconnect}>
                   <LogOut size={17} />
@@ -973,58 +946,47 @@ export default function Desk() {
             ) : (
               <>
                 <p>
-                  A small Chrome / Edge helper connects your YAZIO session to
-                  this private desk. You sign in on YAZIO’s own website.
+                  Sign in on YAZIO’s own website, then return to your desk.
+                  Everything runs in this extension—no hosted app or ChatGPT
+                  account is needed.
                 </p>
                 <ol className="steps">
                   <li>
                     <span>1</span>
                     <div>
-                      <strong>Install the browser helper</strong>
+                      <strong>Open YAZIO</strong>
                       <p>
-                        <a href="/nutrition-desk-helper.zip" download>
-                          Download the helper <ArrowDownToLine size={13} />
-                        </a>
-                        , then unzip it. Open <code>chrome://extensions</code>{" "}
-                        (or <code>edge://extensions</code>), enable Developer
-                        mode, and choose “Load unpacked”. Select the unzipped
-                        folder.
+                        Click Connect below. YAZIO opens in a new tab for your
+                        usual sign-in.
                       </p>
                     </div>
                   </li>
                   <li>
                     <span>2</span>
                     <div>
-                      <strong>Open this desk in that browser</strong>
+                      <strong>Sign in to YAZIO</strong>
                       <p>
-                        Reload this page after installing. The helper works in
-                        Chrome and Edge.
+                        If you’re already signed in on YAZIO, your account
+                        connects right away. Otherwise, complete your usual
+                        sign-in there.
                       </p>
                     </div>
                   </li>
                   <li>
                     <span>3</span>
                     <div>
-                      <strong>Connect and sign in with Apple</strong>
+                      <strong>Your diary, right here</strong>
                       <p>
-                        YAZIO opens in a new tab. Finish your usual Apple
-                        sign-in there; your diary will connect here
-                        automatically. If YAZIO is already signed in, log out on
-                        that page, then sign in again.
+                        This tab connects automatically. Your diary and recent
+                        foods sync directly with YAZIO.
                       </p>
                     </div>
                   </li>
                 </ol>
-                <div className={`helper-status ${helper ? "ready" : ""}`}>
-                  <span />
-                  {helper
-                    ? "Browser helper is ready"
-                    : "Waiting for browser helper"}
-                </div>
                 <button
                   className="primary full"
                   onClick={connect}
-                  disabled={!helper || pairing}
+                  disabled={pairing}
                 >
                   {pairing ? (
                     <LoaderCircle className="spin" size={17} />
@@ -1032,13 +994,17 @@ export default function Desk() {
                     <Link2 size={17} />
                   )}
                   {pairing
-                    ? "Waiting for Apple sign-in…"
+                    ? "Waiting for YAZIO sign-in…"
                     : "Connect with YAZIO"}
                 </button>
+                {pairing && (
+                  <button className="secondary full" onClick={cancelPair}>
+                    Cancel sign-in
+                  </button>
+                )}
                 <p className="privacy-copy">
-                  The helper only passes a session after you click Connect. It
-                  never reads your Apple password or sends anything to
-                  analytics.
+                  Your session stays on this device and is sent only to YAZIO.
+                  The extension never reads your password.
                 </p>
               </>
             )}

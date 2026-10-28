@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 @font-face {
   font-family: "Yazio Sans";
   src: url("/fonts/yazio-sans-bold.woff2") format("woff2");
@@ -784,16 +782,6 @@ h1 > span {
   height: 95px;
   object-fit: contain;
 }
-.card-footnote {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  font-size: 8px;
-  color: var(--secondary);
-  margin-top: 17px;
-  white-space: nowrap;
-}
 .text-button {
   background: transparent;
   color: var(--action);
@@ -1031,31 +1019,7 @@ code {
   border-radius: 5px;
   padding: 1px 4px;
 }
-.helper-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px;
-  background: var(--floor);
-  border-radius: 12px;
-  font-size: 11px;
-  color: var(--secondary);
-  margin-bottom: 15px;
-}
-.helper-status > span {
-  width: 6px;
-  height: 6px;
-  background: var(--muted);
-  border-radius: 50%;
-}
-.helper-status.ready {
-  background: var(--focus);
-  color: var(--action);
-}
-.helper-status.ready > span {
-  background: var(--accent);
-}
-.dialog p.privacy-copy {
+.privacy-copy {
   font-size: 10px;
   color: var(--muted);
   margin-bottom: 0;
@@ -1361,9 +1325,6 @@ input::placeholder {
     width: 225px;
     height: 115px;
   }
-  .card-footnote {
-    font-size: 7px;
-  }
   .side-note strong {
     font-size: 18px;
   }
@@ -1460,11 +1421,6 @@ input::placeholder {
   }
   .connection-card h2 {
     font-size: 26px;
-  }
-  .card-footnote {
-    white-space: normal;
-    text-align: center;
-    font-size: 8px;
   }
   .water-card .card-heading h2 {
     font-size: 19px;
@@ -1731,9 +1687,6 @@ input::placeholder {
   }
   .connection-card .primary {
     max-width: 270px;
-  }
-  .card-footnote {
-    justify-content: flex-start;
   }
   .meal-icon {
     width: 48px;

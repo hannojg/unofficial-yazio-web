@@ -1,51 +1,58 @@
 # Nutrition Desk
 
-A private desktop companion for your YAZIO account, with Apple sign-in through YAZIO’s own website.
+A personal YAZIO companion that runs entirely inside a Chrome or Edge extension. Click its toolbar icon to open your diary in a full-size tab. No web server, hosting account, ChatGPT sign-in, or runtime secrets are needed.
 
-Live app: https://nutrition-desk-hanno.equalcandy26.chatgpt.site
+## Install
 
-## Connect your account
+Requires Node 22.13 or newer and Chrome / Edge 120 or newer.
 
-1. Download `public/nutrition-desk-helper.zip` from the app’s connection screen and unzip it.
-2. In Chrome or Edge, open `chrome://extensions` / `edge://extensions`, enable Developer mode, and choose **Load unpacked**. Select the unzipped folder.
-3. Open the live app in that browser and reload it. The app is private and requires your ChatGPT sign-in.
-4. Click **Connect YAZIO**. Complete Apple sign-in on the YAZIO tab it opens. Keep the desk tab open. If the YAZIO tab is already signed in, log out on that page and sign in again to issue a fresh session.
-5. Your diary loads automatically. The helper can remain installed for reconnecting later.
+```sh
+npm ci
+npm run build
+```
 
-The Chrome/Edge helper is necessary because YAZIO’s Apple OAuth callback is registered on YAZIO’s own domain. It observes the successful token response from the official website only during a pairing you start. It sends it to the originating private desk tab. No Apple password is read. Tokens are encrypted with AES-GCM in an HttpOnly cookie bound to your Site identity; the helper does not persist tokens. Pairing expires after 10 minutes. Disconnect removes the browser’s desk session; it does not revoke YAZIO’s token server-side.
+1. Remove the old **Nutrition Desk · YAZIO Connect** helper if it is installed.
+2. Open `chrome://extensions` or `edge://extensions` and enable **Developer mode**.
+3. Click **Load unpacked** and select this project's **dist** folder, which contains `manifest.json`.
+4. Pin **Nutrition Desk** and click its toolbar icon.
+5. Click **Connect YAZIO**. If you are already signed in on YAZIO, the existing session connects automatically. Otherwise, use your usual sign-in method in the YAZIO tab it opens.
+
+Keep `dist` in place: Chrome loads the unpacked extension from that folder. After changing the source, run `npm run build`, click **Reload** on the extension card, and reload any open Nutrition Desk tab. Rebuilding does not remove the local session.
 
 ## Features
 
-- Browse diary dates and daily energy / macro totals.
-- See products, recipes, and quick entries grouped by meal.
-- Open the food picker to see recent foods from your synced YAZIO history, with the last quantity prefilled.
-- Search the YAZIO database using your account’s food database country and sex.
-- Add a product by base quantity; review energy and macros before logging.
-- Remove entries with an explicit confirmation.
-- Log water in 250 ml increments.
-- Renew expired sessions through the official web token endpoint.
+- Browse diary dates, daily energy / macro totals, and meals.
+- View synced recent foods with the last-used quantity prefilled.
+- Search YAZIO using your account's food database country and sex.
+- Review product portions before logging them.
+- Remove entries with confirmation and track water in 250 ml increments.
+- Renew sessions through YAZIO's official web token endpoint.
+- Switch between the YAZIO-style light and dark themes.
 
-Recipe row energy is shown as an em dash; the daily and meal totals still come from YAZIO’s summary. Nutrition goals and profile editing are outside this first version.
+Recipe rows show an em dash for energy; meal and daily totals come from YAZIO. Unit preferences remain partly supported: the energy unit label is read from the API, water uses litres/ml, food amounts use each product's base unit, and macros use grams. Complete unit conversion and profile / goal editing are not implemented.
 
-## Local development
+## How it works
 
-Requires Node 22.13 or newer.
+The React dashboard and all scripts, fonts, and images are bundled into the extension. Its Manifest V3 service worker calls `yzapi.yazio.com` for diary operations and `www.yazio.com/api/auth/token` for refresh. The extension requests access only to those two hosts, plus `storage` and `declarativeNetRequestWithHostAccess`. One request-header rule identifies this extension’s own `yzapi.yazio.com/v22/` requests as the inspected YAZIO Android client, which the diary API requires. It does not change headers for website tabs or other extensions.
+
+Sign-in happens on YAZIO's official website using your chosen method. After you click Connect, a content script in the specific YAZIO tab opened by the extension reads YAZIO’s already loaded page auth store. This single flow works for both an existing session and a new sign-in. The worker accepts it only from that tab during the ten-minute connection window, and validates it with YAZIO before storing it. Other YAZIO tabs never read or import the session.
+
+Access and refresh tokens stay in `chrome.storage.local`, restricted to trusted extension contexts. They are not synced with Chrome Sync or returned to the dashboard. This is browser-managed local storage, not an encrypted server cookie. Disconnect deletes the local session; it does not revoke the token at YAZIO. The extension never reads your password. There is no analytics service or Nutrition Desk backend.
+
+Pairing state is stored in `chrome.storage.session`, so it survives the worker going idle. Token rotation is persisted locally, and concurrent expired requests share one refresh. Reconnection is required after uninstalling or using a different browser profile.
+
+## Development and checks
 
 ```sh
-npm install
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run typecheck
+npm test
+npm run build
 ```
 
-Set `NUTRITION_SESSION_KEY` to a strong random secret in an ignored `.dev.vars` file. The preview provides its own local ChatGPT identity. The included helper allows the hosted app plus localhost / 127.0.0.1 on port 5173. A changed deployment origin must be explicitly updated in `browser-helper/manifest.json` and `browser-helper/background.js`, then repackaged.
+Test fixtures use synthetic sessions and mocked requests. They cover connection origin/tab restrictions, expiry and cancellation, worker restarts, token rotation and disconnect races, recent-food ordering, and exact food/water payloads. They never modify a real YAZIO account.
 
-```sh
-npx tsc --noEmit
-node --test tests/integration.mjs
-node /absolute/path/to/sites/scripts/build-site.mjs
-```
-
-The integration tests require the local preview on port 5173. They use synthetic tokens and never modify a YAZIO account. Tests cover authentication, origin checks, pairing protection, and extension capture boundaries. Live food search and product details were verified against YAZIO; account-specific diary reads, writes, and refresh need a real connected session to verify.
+Load the built extension to test browser behavior. A normal website tab does not have extension APIs and is not a supported runtime.
 
 ## API research
 
-See `RESEARCH.txt` for APK evidence, endpoint mapping, and verification limits. This tool uses an unofficial private API that YAZIO may change. It is independent of YAZIO.
+See `RESEARCH.txt` for APK evidence and endpoint mapping. This tool uses an unofficial private API that YAZIO may change. It is independent of YAZIO. The former hosted version is retained in Git history, not as a second runtime in this project.

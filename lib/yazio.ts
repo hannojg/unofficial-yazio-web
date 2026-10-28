@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 export const API_BASE = "https://yzapi.yazio.com/v22";
-export const USER_AGENT =
-  "YAZIO/26.28.0 (com.yazio.android; build:607100145; Android 35) Ktor";
 const text = z.string();
 const numeric = z.number();
 const boolean = z.boolean();
@@ -116,7 +114,6 @@ export async function upstream(
 ) {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${tokens.access_token}`);
-  headers.set("User-Agent", USER_AGENT);
   headers.set("Accept-Language", "en");
   headers.set("Content-Type", "application/json");
   const timeout = AbortSignal.timeout(20000);
@@ -125,6 +122,7 @@ export async function upstream(
     headers,
     signal: timeout,
     cache: "no-store",
+    credentials: "omit",
   });
 }
 
@@ -135,10 +133,11 @@ export async function checkResponse(response: Response) {
       "Your YAZIO session expired. Reconnect your account.",
       401,
     );
-  if (response.status === 403)
+  if (response.status === 403) {
     throw new ApiError(
       "YAZIO rejected this client. Its private API may have changed.",
     );
+  }
   if (response.status === 429)
     throw new ApiError(
       "YAZIO is receiving too many requests. Please try again shortly.",
@@ -163,6 +162,7 @@ export async function refreshTokens(tokens: Tokens) {
     body,
     signal,
     cache: "no-store",
+    credentials: "omit",
   });
   await checkResponse(response);
   const json = await response.json();
