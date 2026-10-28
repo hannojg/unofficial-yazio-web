@@ -1,0 +1,10 @@
+Paytone One Regular
+Source: https://github.com/google/fonts/tree/main/ofl/paytoneone
+File: PaytoneOne-Regular.ttf, unmodified, distributed as paytone-one-regular.ttf
+License and copyright: PaytoneOne-OFL.txt
+
+Rubik Regular and Medium, version 2.102
+Copyright 2015 The Rubik Project Authors (https://github.com/googlefonts/rubik)
+The bundled WOFF files contain this copyright notice and identify SIL OFL as their license.
+Upstream: https://github.com/googlefonts/rubik
+License and copyright: Rubik-OFL.txt

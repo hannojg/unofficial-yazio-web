@@ -38,9 +38,9 @@ The React dashboard and all scripts, fonts, and images are bundled into the exte
 
 Sign-in happens on YAZIO's official website using your chosen method. After you click Connect, a content script in the specific YAZIO tab opened by the extension reads YAZIO’s already loaded page auth store. This single flow works for both an existing session and a new sign-in. The worker accepts it only from that tab during the ten-minute connection window, and validates it with YAZIO before storing it. Other YAZIO tabs never read or import the session.
 
-Access and refresh tokens stay in `chrome.storage.local`, restricted to trusted extension contexts. They are not synced with Chrome Sync or returned to the dashboard. This is browser-managed local storage, not an encrypted server cookie. Disconnect deletes the local session; it does not revoke the token at YAZIO. The extension never reads your password. There is no analytics service or (unofficial) yazio web backend.
+Access and refresh tokens stay in `chrome.storage.session`, restricted to trusted extension contexts. They remain in memory and are not written to persistent extension storage, synced with Chrome Sync, or returned to the dashboard. Disconnect deletes the in-memory session; it does not revoke the token at YAZIO. The extension never reads your password. There is no analytics service or (unofficial) yazio web backend.
 
-Pairing state is stored in `chrome.storage.session`, so it survives the worker going idle. Token rotation is persisted locally, and concurrent expired requests share one refresh. Reconnection is required after uninstalling or using a different browser profile.
+Pairing state and token rotation use the same in-memory session storage, so the connection survives a diary refresh or the worker going idle. Concurrent expired requests share one refresh. Reconnect after restarting Chrome, reloading/updating/disabling the extension, or switching browser profiles. If the YAZIO website is still signed in, Connect can reuse that session. Startup deletes the token entry saved by older versions without importing it.
 
 ## Development and checks
 
@@ -64,4 +64,4 @@ See `RESEARCH.txt` for APK evidence and endpoint mapping. This tool uses an unof
 
 See [PRIVACY.md](PRIVACY.md) for the current data handling and [STORE.md](STORE.md) for Chrome Web Store preparation, listing copy, and remaining release work. Making this repository public does not expose local browser sessions, ignored build outputs, or local verification screenshots.
 
-The YAZIO mascot and custom font were sourced from YAZIO's website during prototyping. They remain third-party assets; attribution does not grant redistribution rights. Public source availability does not license those assets. A project license for the original source has not yet been selected.
+The extension bundles Paytone One for headings and Rubik for body text under the SIL Open Font License. Copyright notices and license text are included in `public/fonts/` and the built extension. The prototype's YAZIO Sans font and Yettie mascot have been removed from the current source and package; older Git commits still contain those prototype assets. A project license for the original source has not yet been selected.

@@ -17,7 +17,9 @@ import { configureClientHeader } from "./client-header";
 type Pair = { deskTab: number; yazioTab: number; expires: number };
 let pairingRevision = 0;
 async function initialize() {
-  await chrome.storage.local.setAccessLevel({
+  // Delete tokens persisted by versions before 2.4.0 without importing them.
+  await chrome.storage.local.remove("tokens");
+  await chrome.storage.session.setAccessLevel({
     accessLevel: "TRUSTED_CONTEXTS",
   });
   await configureClientHeader();
@@ -26,18 +28,18 @@ const ready = initialize();
 
 async function readTokens() {
   await ready;
-  const stored = await chrome.storage.local.get("tokens");
+  const stored = await chrome.storage.session.get("tokens");
   return stored.tokens ? tokenSchema.parse(stored.tokens) : null;
 }
 
 async function writeTokens(tokens: Tokens) {
   await ready;
-  await chrome.storage.local.set({ tokens });
+  await chrome.storage.session.set({ tokens });
 }
 
 async function removeTokens() {
   await ready;
-  await chrome.storage.local.remove("tokens");
+  await chrome.storage.session.remove("tokens");
 }
 
 async function notify(event: DeskEvent) {

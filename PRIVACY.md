@@ -1,6 +1,6 @@
 # Privacy: (unofficial) yazio web
 
-Updated October 28, 2026. This describes version 2.3.0.
+Updated October 28, 2026. This describes version 2.4.0.
 
 This extension is an independent companion to YAZIO. It is not affiliated with YAZIO GmbH.
 
@@ -12,11 +12,13 @@ The extension requests your account's first name, sex, country, food database co
 
 ## Storage and retention
 
-The current implementation saves YAZIO session tokens in `chrome.storage.local`, with access restricted to trusted extension contexts. Tokens are not stored in Chrome Sync. This storage is part of your local browser profile; the extension does not add encryption at rest. Session tokens remain there until you disconnect, uninstall, or the session becomes invalid. Refreshing a session replaces its stored tokens.
+YAZIO access and refresh tokens are kept in Chrome's in-memory `chrome.storage.session`, with access restricted to trusted extension contexts. The extension does not write them to persistent extension storage or Chrome Sync. The connection survives refreshing the diary and suspension of the background worker. Chrome clears the session when the browser restarts or the extension is reloaded, updated, or disabled; disconnecting or an invalid session also removes the tokens. Token renewal replaces the in-memory tokens.
+
+Startup deletes the persistent token entry saved by older extension versions without importing it. This update therefore requires connecting again once. YAZIO's website maintains its own sign-in independently under YAZIO's policies.
 
 Diary, search, and food details are kept in memory while the dashboard is open. Pending connection details are kept in Chrome's session storage during the connection window. The chosen display theme is stored locally.
 
-Disconnect removes the extension's local session. It does not revoke the YAZIO session or delete information already held by YAZIO. Uninstalling removes the extension's storage; YAZIO retains account data under its own policies.
+Disconnect removes the extension's in-memory session. It does not revoke the YAZIO session or delete information already held by YAZIO. Uninstalling removes the extension's storage; YAZIO retains account data under its own policies.
 
 ## Network requests and sharing
 

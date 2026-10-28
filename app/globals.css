@@ -1,7 +1,7 @@
 @font-face {
-  font-family: "Yazio Sans";
-  src: url("/fonts/yazio-sans-bold.woff2") format("woff2");
-  font-weight: 700;
+  font-family: "Paytone One";
+  src: url("/fonts/paytone-one-regular.ttf") format("truetype");
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
@@ -43,7 +43,8 @@
   --error: #cc3528;
   --error-bg: #fff1ef;
   --font-sans: "Rubik", sans-serif;
-  --font-display: "Yazio Sans", sans-serif;
+  --font-display: "Paytone One", sans-serif;
+  --font-display-weight: 400;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -121,7 +122,7 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: var(--font-display-weight);
 }
 svg {
   flex-shrink: 0;
@@ -163,7 +164,7 @@ svg {
 }
 .brand-unofficial {
   display: block;
-  margin-bottom: 4px;
+  margin-top: 4px;
   font: 400 11px/1.3 var(--font-sans);
   letter-spacing: 0;
 }
@@ -331,10 +332,6 @@ h1 > span {
   font-size: 14px;
 }
 .connect-welcome {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  align-items: center;
-  gap: 32px;
   padding: 48px;
   border: 2px solid var(--blue-border);
   border-radius: 28px;
@@ -351,11 +348,6 @@ h1 > span {
   color: var(--secondary);
   font-size: 14px;
   line-height: 1.8;
-}
-.connect-welcome > img {
-  width: 100%;
-  max-height: 220px;
-  object-fit: contain;
 }
 .welcome-actions {
   display: flex;
@@ -504,7 +496,7 @@ h1 > span {
   padding-top: 1px;
 }
 .ring-copy strong {
-  font: 700 38px/1.1 var(--font-display);
+  font: var(--font-display-weight) 38px/1.1 var(--font-display);
   letter-spacing: -0.7px;
 }
 .ring-copy > span {
@@ -728,7 +720,7 @@ h1 > span {
 }
 .water-value {
   margin: 19px 0 23px;
-  font: 700 38px/1.1 var(--font-display);
+  font: var(--font-display-weight) 38px/1.1 var(--font-display);
   letter-spacing: -0.6px;
 }
 .water-value > span {
@@ -797,6 +789,12 @@ footer > span:last-child {
   max-width: 680px;
   line-height: 1.6;
   text-align: right;
+}
+footer a,
+.connection-disclosure a {
+  color: var(--action);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .error-banner {
   display: flex;
@@ -936,11 +934,6 @@ code {
   background: var(--hover);
   border-radius: 5px;
   padding: 1px 4px;
-}
-.privacy-copy {
-  font-size: 10px;
-  color: var(--muted);
-  margin-bottom: 0;
 }
 .modal-error {
   background: var(--error-bg);
@@ -1438,8 +1431,6 @@ input::placeholder {
     gap: 16px;
   }
   .connect-welcome {
-    grid-template-columns: minmax(0, 1fr) 140px;
-    gap: 16px;
     padding: 28px 24px;
   }
   .connect-welcome p {
@@ -1530,15 +1521,6 @@ input::placeholder {
   }
 }
 @media (max-width: 430px) {
-  .connect-welcome {
-    grid-template-columns: 1fr;
-  }
-  .connect-welcome > img {
-    grid-row: 1;
-    width: 130px;
-    height: 130px;
-    margin: 0 auto;
-  }
   .page-heading h1 {
     font-size: 29px;
   }

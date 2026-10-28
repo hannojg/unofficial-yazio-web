@@ -37,9 +37,11 @@ const profile = {
 function fixture(
   fetcher = async () => Response.json(profile),
   installHeaders = async () => {},
+  initialLocal = {},
 ) {
-  const local = {};
+  const local = { ...initialLocal };
   const session = {};
+  const persistentWrites = [];
   const events = [];
   const requests = [];
   const opened = [];
@@ -47,24 +49,27 @@ function fixture(
   let messageListener;
   let removedListener;
   let actionListener;
-  let accessLevel;
+  const accessLevels = {};
   let now = Date.now();
-  function area(data) {
+  function area(data, name) {
     return {
       async get(key) {
         return { [key]: data[key] };
       },
       async set(values) {
         Object.assign(data, values);
+        if (name === "local") persistentWrites.push(values);
       },
       async remove(key) {
         delete data[key];
       },
       async setAccessLevel(options) {
-        accessLevel = options.accessLevel;
+        accessLevels[name] = options.accessLevel;
       },
     };
   }
+  const localArea = area(local, "local");
+  const sessionArea = area(session, "session");
   const chrome = {
     declarativeNetRequest: {
       async updateDynamicRules(options) {
@@ -72,7 +77,7 @@ function fixture(
         await installHeaders();
       },
     },
-    storage: { local: area(local), session: area(session) },
+    storage: { local: localArea, session: sessionArea },
     runtime: {
       id: extensionId,
       getURL(path) {
@@ -167,7 +172,13 @@ function fixture(
     request,
     capture,
     restart,
-    accessLevel: () => accessLevel,
+    persistentWrites,
+    accessLevel: (name) => accessLevels[name],
+    restartBrowser() {
+      const keys = Object.keys(session);
+      for (const key of keys) delete session[key];
+      restart();
+    },
     advance(ms) {
       now += ms;
     },
@@ -190,7 +201,7 @@ test("the extension is disconnected initially and content scripts cannot read to
   const reply = await app.request({ type: "session" });
   assert.equal(reply.ok, true);
   assert.equal(reply.value.connected, false);
-  const accessLevel = app.accessLevel();
+  const accessLevel = app.accessLevel("session");
   assert.equal(accessLevel, "TRUSTED_CONTEXTS");
   assert.equal(app.requests.length, 0);
   const rejected = await app.request(
@@ -225,12 +236,12 @@ test("session imports are accepted only from the user-started, unexpired YAZIO t
   assert.equal(app.local.tokens, undefined);
 });
 
-test("a paired session is validated, stored locally, and survives a worker restart without exposing tokens to the UI", async () => {
+test("a paired session stays in memory across worker restarts without persistent writes or token exposure", async () => {
   const app = fixture();
   await app.request({ type: "connect" });
   const reply = await app.capture();
   assert.equal(reply.ok, true);
-  const savedTokens = plain(app.local.tokens);
+  const savedTokens = plain(app.session.tokens);
   assert.deepEqual(savedTokens, tokens);
   assert.equal(app.session.pairing, undefined);
   assert.equal(app.requests[0].url, "https://yzapi.yazio.com/v22/user");
@@ -244,6 +255,36 @@ test("a paired session is validated, stored locally, and survives a worker resta
   const eventText = JSON.stringify(app.events);
   const eventHasToken = eventText.includes(tokens.refresh_token);
   assert.equal(eventHasToken, false);
+  assert.equal(app.local.tokens, undefined);
+  assert.equal(app.persistentWrites.length, 0);
+});
+
+test("a browser restart clears the connection instead of restoring persisted credentials", async () => {
+  const app = fixture();
+  await app.request({ type: "connect" });
+  await app.capture();
+  const connected = await app.request({ type: "session" });
+  assert.equal(connected.value.connected, true);
+  app.restartBrowser();
+  const requestCount = app.requests.length;
+  const disconnected = await app.request({ type: "session" });
+  assert.equal(disconnected.value.connected, false);
+  assert.equal(app.session.tokens, undefined);
+  assert.equal(app.local.tokens, undefined);
+  assert.equal(app.requests.length, requestCount);
+  assert.equal(app.persistentWrites.length, 0);
+});
+
+test("old disk tokens are removed without import and unrelated settings remain intact", async () => {
+  const legacy = { tokens, preference: "dark" };
+  const app = fixture(undefined, undefined, legacy);
+  const state = await app.request({ type: "session" });
+  assert.equal(state.value.connected, false);
+  assert.equal(app.local.tokens, undefined);
+  assert.equal(app.local.preference, "dark");
+  assert.equal(app.session.tokens, undefined);
+  assert.equal(app.requests.length, 0);
+  assert.equal(app.persistentWrites.length, 0);
 });
 
 test("a sign-in pairing survives a worker restart and stops when its YAZIO tab closes", async () => {
@@ -281,9 +322,10 @@ test("cancelling a connection during token validation cannot recreate a session"
   const reply = await importing;
   assert.equal(reply.ok, false);
   assert.equal(app.local.tokens, undefined);
+  assert.equal(app.session.tokens, undefined);
 });
 
-test("simultaneous expired requests share one refresh and persist rotated tokens", async () => {
+test("simultaneous expired requests share one refresh and keep rotated tokens only in memory", async () => {
   let refreshes = 0;
   const app = fixture(async (url, init) => {
     if (url === "https://www.yazio.com/api/auth/token") {
@@ -299,15 +341,17 @@ test("simultaneous expired requests share one refresh and persist rotated tokens
     }
     return Response.json(profile);
   });
-  app.local.tokens = tokens;
+  app.session.tokens = tokens;
   const first = app.request({ type: "session" });
   const second = app.request({ type: "session" });
   const replies = await Promise.all([first, second]);
   assert.equal(replies[0].value.connected, true);
   assert.equal(replies[1].value.connected, true);
   assert.equal(refreshes, 1);
-  const savedTokens = plain(app.local.tokens);
+  const savedTokens = plain(app.session.tokens);
   assert.deepEqual(savedTokens, rotated);
+  assert.equal(app.local.tokens, undefined);
+  assert.equal(app.persistentWrites.length, 0);
 });
 
 test("disconnecting while refresh is in flight cannot restore the local session", async () => {
@@ -326,22 +370,23 @@ test("disconnecting while refresh is in flight cannot restore the local session"
     }
     return new Response(null, { status: 401 });
   });
-  app.local.tokens = tokens;
+  app.session.tokens = tokens;
   const loading = app.request({ type: "session" });
   await beginning;
   await app.request({ type: "disconnect" });
   const response = Response.json(rotated);
   finish(response);
   await loading;
-  assert.equal(app.local.tokens, undefined);
+  assert.equal(app.session.tokens, undefined);
+  assert.equal(app.persistentWrites.length, 0);
 });
 
 test("a rejected refresh removes the expired session and updates the dashboard", async () => {
   const app = fixture(async () => new Response(null, { status: 401 }));
-  app.local.tokens = tokens;
+  app.session.tokens = tokens;
   const reply = await app.request({ type: "session" });
   assert.equal(reply.value.connected, false);
-  assert.equal(app.local.tokens, undefined);
+  assert.equal(app.session.tokens, undefined);
   const lastEvent = app.events.at(-1);
   assert.equal(lastEvent.kind, "ND_SESSION_CHANGED");
 });
@@ -394,7 +439,7 @@ test("API requests wait until Chrome has installed the required client header", 
     async () => Response.json(profile),
     () => installation,
   );
-  app.local.tokens = tokens;
+  app.session.tokens = tokens;
   const loading = app.request({ type: "session" });
   await new Promise(setImmediate);
   assert.equal(app.requests.length, 0);

@@ -70,6 +70,23 @@ function message(error: unknown) {
   return "Something went wrong. Please try again.";
 }
 
+const privacyPolicyUrl =
+  "https://github.com/hannojg/unofficial-yazio-web/blob/main/PRIVACY.md";
+
+function ConnectionDisclosure() {
+  return (
+    <p className="connection-disclosure">
+      Connecting lets this extension read your YAZIO sign-in session, profile,
+      and nutrition diary. Food and water changes sync directly with YAZIO.
+      Your sign-in stays in memory; reconnect after restarting Chrome or
+      reloading/updating the extension.{" "}
+      <a href={privacyPolicyUrl} target="_blank" rel="noreferrer">
+        Privacy policy
+      </a>
+    </p>
+  );
+}
+
 export default function Desk() {
   const [theme, setTheme] = useState<Theme>("light");
   const [session, setSession] = useState<Session>({ connected: false });
@@ -493,8 +510,8 @@ export default function Desk() {
             height="42"
           />
           <span>
-            <span className="brand-unofficial">(unofficial)</span>
             yazio web
+            <span className="brand-unofficial">(unofficial)</span>
           </span>
         </a>
         <div className="sidebar-label">YOUR SPACE</div>
@@ -542,7 +559,7 @@ export default function Desk() {
           <div className="private-note">
             <ShieldCheck size={14} />
             <span>
-              Stored locally.
+              Session in memory.
               <br />
               Synced only with YAZIO.
             </span>
@@ -849,10 +866,7 @@ export default function Desk() {
               <div>
                 <div className="eyebrow">YOUR YAZIO COMPANION</div>
                 <h2>Your YAZIO, at your desk.</h2>
-                <p>
-                  Connect your account to see your meals, recent foods, and
-                  daily goals in one place.
-                </p>
+                <ConnectionDisclosure />
                 <div className="welcome-actions">
                   <button
                     className="primary"
@@ -873,11 +887,15 @@ export default function Desk() {
                   )}
                 </div>
               </div>
-              <img src="./yettie.webp" alt="YAZIO’s Yettie mascot waving" />
             </section>
           )}
           <footer>
-            <span>Made for your everyday.</span>
+            <span>
+              Made for your everyday.{" "}
+              <a href={privacyPolicyUrl} target="_blank" rel="noreferrer">
+                Privacy policy
+              </a>
+            </span>
             <span>
               Not officially affiliated with YAZIO. YAZIO trademarks and
               branding assets belong to YAZIO GmbH.
@@ -925,8 +943,9 @@ export default function Desk() {
               <>
                 <p>
                   You’re connected as {session.profile?.first_name}. Your
-                  session stays in this browser’s extension storage.
-                  Disconnecting removes the local session.
+                  sign-in stays in memory for this browser session. Restarting
+                  Chrome or reloading/updating the extension requires
+                  reconnecting. Disconnecting removes the session now.
                 </p>
                 <button className="secondary full" onClick={disconnect}>
                   <LogOut size={17} />
@@ -937,8 +956,6 @@ export default function Desk() {
               <>
                 <p>
                   Sign in on YAZIO’s own website, then return to your desk.
-                  Everything runs in this extension—no hosted app or ChatGPT
-                  account is needed.
                 </p>
                 <ol className="steps">
                   <li>
@@ -973,6 +990,7 @@ export default function Desk() {
                     </div>
                   </li>
                 </ol>
+                <ConnectionDisclosure />
                 <button
                   className="primary full"
                   onClick={connect}
@@ -992,10 +1010,6 @@ export default function Desk() {
                     Cancel sign-in
                   </button>
                 )}
-                <p className="privacy-copy">
-                  Your session stays on this device and is sent only to YAZIO.
-                  The extension never reads your password.
-                </p>
               </>
             )}
           </section>
