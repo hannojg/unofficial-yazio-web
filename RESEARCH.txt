@@ -1,0 +1,51 @@
+YAZIO desktop integration research — 28 October 2026
+
+APK
+- Downloaded with EFF apkeep 1.1.0 from APKPure for static inspection.
+- Package: com.yazio.android; version: 26.28.0; build: 607100145.
+- Base APK SHA-256: f162d22dc48af38bd2028209f9cb13abe1161e9a0a09d504971f2a612813aa14.
+- Inspected with jadx 1.5.6. jadx reported 459 decompilation errors across the application, but the endpoint interfaces and serializers used here were readable. The APK was not installed or executed.
+- Android serializers confirm v22, consumed item buckets, product quantities, quick-entry nutrients, and Apple jwt grant fields.
+- User-Agent assembled by m8c.I, gl0, and r case 24: YAZIO/26.28.0 (com.yazio.android; build:607100145; Android 35) Ktor. Android API 35 is the declared client OS version, not a user device measurement.
+
+Official web source inspected
+https://www.yazio.com/en/app/account/login
+https://www.yazio.com/_nuxt/CwtYl7Kw.js
+https://www.yazio.com/_nuxt/D3DjNNH5.js
+https://www.yazio.com/_nuxt/BiXilQJ4.js
+
+The page’s public configuration supplies Apple client com.yazio-website.siwa and callback https://www.yazio.com/app/login. AppleID.auth uses a popup. Its success event supplies an identity token, which the page submits as jwt with grant_type=sign_in_with_apple to /api/auth/token. The response contains access_token and refresh_token. The website uses client_id 7_9236kdzucvnd624cklgz787kcvhjfch6sbdejgmdv8387fj7v. The refresh request uses the same official endpoint. There is no need to use an embedded mobile client secret in this implementation.
+
+The helper wraps fetch at document_start and copies successful /api/auth/token responses. It preserves YAZIO’s normal login. The service worker accepts the copy only from the YAZIO tab it opened for a user-started pairing and only for 10 minutes. The copy is forwarded to the originating desk content script. That script posts it same-origin to the private desk server, which checks the pairing cookie, validates the token against /v22/user, and encrypts the resulting session. The hosted app uses its platform identity boundary and binds the session cookie to that identity.
+
+API base: https://yzapi.yazio.com/v22
+GET /user — account display / search parameters / validate session
+GET /user/widgets/daily-summary?date=YYYY-MM-DD — energy, macros, water, and goals
+GET /user/consumed-items?date=YYYY-MM-DD — products, recipe_portions, simple_products
+GET /products/search?query=...&sex=...&countries=...&locales=... — food search
+GET /products/{uuid} — product nutrients and base unit
+GET /recipes/{uuid} — recipe name
+POST /user/consumed-items — products array with UUID, product_id, amount, daytime, full local date-time, nullable serving fields
+DELETE /user/consumed-items — JSON object with bucket name mapping to a SINGLE entry UUID string
+POST /user/water-intake — array with date and absolute water_intake in liters
+POST https://www.yazio.com/api/auth/token — refresh grant for the website client
+
+Live verification completed
+- Official account page loads and offers Apple and Google sign-in.
+- Anonymous /v22/user returns 401.
+- Search with AT / male / en parameters returns 200.
+- Product details for public cheese product 9dd1d51c-becf-11e6-9b02-e0071b8a8723 return 200.
+- Nutrients are per ONE base unit: cheese energy is 3.86 kcal per gram, so 100 g is 386 kcal.
+- Search requires countries and sex; omission returns field validation errors.
+- Authentication, foreign-origin rejection, encrypted pairing cookies, wrong-nonce rejection, unpaired imports, and extension scoping pass automated local checks.
+
+Still requires user sign-in
+- The real Apple-to-YAZIO-to-desk handoff.
+- Account-specific summary / diary parsing and meal hydration.
+- Add / remove / water writes against the user’s account.
+- Refresh of a real web-issued YAZIO token.
+No account mutations were performed during research or automated testing. No user credentials were supplied or captured during development.
+
+Supplemental primary implementation source
+https://github.com/yazio-community/yazio-api-specification (MIT)
+The community describes its own observed traffic; it is not official YAZIO documentation. It informed uncaptured payload details and was cross-checked with APK serializers and anonymous live product endpoints where possible. API contracts can change without notice. No alternative endpoint generations or authentication fallbacks are included.

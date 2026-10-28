@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Nutrition Desk · YAZIO Connect",
+  "version": "1.0.0",
+  "description": "Connect your own YAZIO session to your private Nutrition Desk after you choose Connect.",
+  "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://www.yazio.com/*"], "js": ["capture.js"], "run_at": "document_start", "world": "MAIN" },
+    { "matches": ["https://www.yazio.com/*", "https://nutrition-desk-hanno.equalcandy26.chatgpt.site/*", "http://localhost:5173/*", "http://127.0.0.1:5173/*"], "js": ["relay.js"], "run_at": "document_start" }
+  ]
+}
