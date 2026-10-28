@@ -483,7 +483,7 @@ export default function Desk() {
         <a
           className="brand"
           href="./index.html"
-          aria-label="Nutrition Desk home"
+          aria-label="(unofficial) yazio web home"
         >
           <img
             className="brand-mark"
@@ -493,7 +493,8 @@ export default function Desk() {
             height="42"
           />
           <span>
-            nutrition<span className="brand-second">desk</span>
+            <span className="brand-unofficial">(unofficial)</span>
+            yazio web
           </span>
         </a>
         <div className="sidebar-label">YOUR SPACE</div>

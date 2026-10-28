@@ -113,7 +113,7 @@ async function run(command: Command, sender: chrome.runtime.MessageSender) {
     case "connect": {
       const expectedRevision = ++pairingRevision;
       if (sender.tab?.id === undefined)
-        throw new ApiError("Open Nutrition Desk in a browser tab.", 400);
+        throw new ApiError("Open (unofficial) yazio web in a browser tab.", 400);
       const tab = await chrome.tabs.create({
         url: "about:blank",
       });
@@ -156,12 +156,12 @@ async function importSession(
   const expectedRevision = pairingRevision;
   const pair = await pairedTab(sender);
   if (pair === null) {
-    throw new ApiError("Start a connection from Nutrition Desk first.", 403);
+    throw new ApiError("Start a connection from (unofficial) yazio web first.", 403);
   }
   if (pair.expires <= Date.now()) {
     await chrome.storage.session.remove("pairing");
     throw new ApiError(
-      "The connection expired. Start again in Nutrition Desk.",
+      "The connection expired. Start again in (unofficial) yazio web.",
       401,
     );
   }
@@ -182,14 +182,14 @@ async function importSession(
       current.expires <= Date.now()
     ) {
       throw new ApiError(
-        "This connection was cancelled. Start again in Nutrition Desk.",
+        "This connection was cancelled. Start again in (unofficial) yazio web.",
         401,
       );
     }
     await chrome.storage.session.remove("pairing");
     if (pairingRevision !== expectedRevision) {
       throw new ApiError(
-        "This connection was cancelled. Start again in Nutrition Desk.",
+        "This connection was cancelled. Start again in (unofficial) yazio web.",
         401,
       );
     }
@@ -235,7 +235,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } else {
         if (isDesk(sender) === false)
           throw new ApiError(
-            "Open Nutrition Desk from its extension icon.",
+            "Open (unofficial) yazio web from its extension icon.",
             403,
           );
         const command = commandSchema.parse(message.command);

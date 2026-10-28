@@ -1,6 +1,6 @@
 {
-  "name": "nutrition-desk",
-  "version": "2.2.1",
+  "name": "unofficial-yazio-web",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "engines": {
