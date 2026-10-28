@@ -791,15 +791,9 @@ footer {
   margin-top: 32px;
 }
 footer > span:last-child {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-footer i {
-  width: 3px;
-  height: 3px;
-  background: var(--muted);
-  border-radius: 50%;
+  max-width: 680px;
+  line-height: 1.6;
+  text-align: right;
 }
 .error-banner {
   display: flex;
@@ -1479,8 +1473,6 @@ input::placeholder {
   }
   footer > span:last-child {
     font-size: 7px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
   }
   .overlay {
     padding: 16px;

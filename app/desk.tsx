@@ -854,7 +854,8 @@ export default function Desk() {
           <footer>
             <span>Made for your everyday.</span>
             <span>
-              Independent YAZIO companion <i /> Private API integration
+              Not officially affiliated with YAZIO. YAZIO trademarks and
+              branding assets belong to YAZIO GmbH.
             </span>
           </footer>
         </div>
