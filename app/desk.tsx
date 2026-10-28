@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  Coffee,
   Droplets,
   Leaf,
   Link2,
@@ -20,9 +19,9 @@ import {
   Plus,
   Search,
   ShieldCheck,
-  Soup,
   Sparkles,
   Sun,
+  Moon,
   Trash2,
   Utensils,
   X,
@@ -38,16 +37,12 @@ import type {
 
 type Session = { connected: boolean; profile?: Profile };
 type Selected = { id: string; product: Product };
-const meals: {
-  id: MealName;
-  label: string;
-  icon: typeof Coffee;
-  color: string;
-}[] = [
-  { id: "breakfast", label: "Breakfast", icon: Coffee, color: "peach" },
-  { id: "lunch", label: "Lunch", icon: Sun, color: "lime" },
-  { id: "dinner", label: "Dinner", icon: Soup, color: "lavender" },
-  { id: "snack", label: "Snacks", icon: Leaf, color: "pink" },
+type Theme = "light" | "dark";
+const meals: { id: MealName; label: string; emoji: string }[] = [
+  { id: "breakfast", label: "Breakfast", emoji: "☕" },
+  { id: "lunch", label: "Lunch", emoji: "🥗" },
+  { id: "dinner", label: "Dinner", emoji: "🍲" },
+  { id: "snack", label: "Snacks", emoji: "🍎" },
 ];
 
 function localDate() {
@@ -89,6 +84,7 @@ function message(error: unknown) {
 }
 
 export default function Desk() {
+  const [theme, setTheme] = useState<Theme>("light");
   const [session, setSession] = useState<Session>({ connected: false });
   const [booting, setBooting] = useState(true);
   const [date, setDate] = useState("");
@@ -109,6 +105,24 @@ export default function Desk() {
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState<Entry | null>(null);
   const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("nutrition-desk-theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    let initial: Theme = prefersDark ? "dark" : "light";
+    if (stored === "light" || stored === "dark") initial = stored;
+    setTheme(initial);
+    document.documentElement.dataset.theme = initial;
+  }, []);
+
+  function toggleTheme() {
+    const next: Theme = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("nutrition-desk-theme", next);
+  }
 
   const reportError = useCallback((error: unknown) => {
     const text = message(error);
@@ -398,9 +412,7 @@ export default function Desk() {
   const remaining = goal + activity - eaten;
   const absoluteRemaining = Math.abs(remaining);
   const filled = goal > 0 ? Math.min(eaten / (goal + activity), 1) : 0;
-  const circleStyle: React.CSSProperties & { "--progress": string } = {
-    "--progress": `${filled * 360}deg`,
-  };
+  const ringDash = `${filled * 75} 100`;
   const today = localDate();
   const dateObject = new Date(`${date || today}T12:00:00`);
   const dateLabel = dateObject.toLocaleDateString("en", {
@@ -427,7 +439,7 @@ export default function Desk() {
       <aside className="sidebar">
         <a className="brand" href="/" aria-label="Nutrition Desk home">
           <span className="brand-mark">
-            <Leaf size={23} strokeWidth={2.2} />
+            <BookOpen size={23} strokeWidth={2.6} />
           </span>
           <span>
             nutrition<span className="brand-second">desk</span>
@@ -449,9 +461,9 @@ export default function Desk() {
               <Sparkles size={19} />
             </span>
             <strong>
-              A little more room
+              Little habits.
               <br />
-              for your wellbeing.
+              Big progress.
             </strong>
             <p>
               Your YAZIO diary.
@@ -474,29 +486,42 @@ export default function Desk() {
       <main>
         <header className="topbar">
           <div className="breadcrumb">
-            Your space <span>/</span> <strong>Food diary</strong>
+            Nutrition Desk <span>/</span> <strong>Diary</strong>
           </div>
-          <button
-            className={`connection-pill ${session.connected ? "connected" : ""}`}
-            onClick={() => setSetup(true)}
-          >
-            <span />
-            {booting
-              ? "Checking connection"
-              : session.connected
-                ? "Connected to YAZIO"
-                : "YAZIO not connected"}
-            <ChevronRight size={14} />
-          </button>
+          <div className="header-actions">
+            <button
+              className="theme-button"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "light"
+                  ? "Switch to dark theme"
+                  : "Switch to light theme"
+              }
+            >
+              {theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
+            </button>
+            <button
+              className={`connection-pill ${session.connected ? "connected" : ""}`}
+              onClick={() => setSetup(true)}
+            >
+              <span />
+              {booting
+                ? "Checking connection"
+                : session.connected
+                  ? "Connected to YAZIO"
+                  : "YAZIO not connected"}
+              <ChevronRight size={14} />
+            </button>
+          </div>
         </header>
         <div className="workspace">
           <section className="page-heading">
             <div>
-              <div className="eyebrow">MAKE SPACE FOR YOURSELF</div>
+              <div className="eyebrow">YOUR EVERYDAY, A LITTLE BETTER</div>
               <h1>
-                Your day, at a glance<span>.</span>
+                Your food diary<span>.</span>
               </h1>
-              <p>A clearer view of the little things that add up.</p>
+              <p>Small steps. Healthy habits. All in one place.</p>
             </div>
             <button
               className="primary"
@@ -572,62 +597,69 @@ export default function Desk() {
             <div className="diary-column">
               <section className="card overview">
                 <div className="card-heading">
-                  <h2>Daily overview</h2>
+                  <h2>Summary</h2>
                   <span className="subtle-label">{unit.toUpperCase()}</span>
                 </div>
                 <div className="overview-body">
-                  <div className="energy-ring" style={circleStyle}>
-                    <div>
-                      <span className="ring-caption">
-                        {remaining < 0 ? "above goal" : "remaining"}
-                      </span>
-                      <strong>
-                        {summary ? number(absoluteRemaining) : "—"}
-                      </strong>
-                      <span className="ring-unit">{unit}</span>
+                  <div className="energy-stats">
+                    <div className="energy-stat">
+                      <strong>{summary ? number(eaten) : "—"}</strong>
+                      <span>Eaten</span>
+                    </div>
+                    <div className="energy-ring">
+                      <svg
+                        viewBox="0 0 180 180"
+                        className="energy-arc"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          className="ring-track"
+                          cx="90"
+                          cy="90"
+                          r="72"
+                          pathLength="100"
+                          strokeDasharray="75 100"
+                          transform="rotate(135 90 90)"
+                        />
+                        <circle
+                          className="ring-fill"
+                          cx="90"
+                          cy="90"
+                          r="72"
+                          pathLength="100"
+                          strokeDasharray={ringDash}
+                          transform="rotate(135 90 90)"
+                        />
+                      </svg>
+                      <div className="ring-copy">
+                        <strong>
+                          {summary ? number(absoluteRemaining) : "—"}
+                        </strong>
+                        <span>
+                          {remaining < 0 ? "Above goal" : "Remaining"}
+                        </span>
+                        <small>{unit}</small>
+                      </div>
+                    </div>
+                    <div className="energy-stat">
+                      <strong>{summary ? number(activity) : "—"}</strong>
+                      <span>Activity added</span>
                     </div>
                   </div>
-                  <div className="energy-details">
-                    <div>
-                      <span>
-                        <i className="small-dot dark" />
-                        Eaten
-                      </span>
-                      <strong>
-                        {summary ? number(eaten) : "—"}
-                        <small>{unit}</small>
-                      </strong>
-                    </div>
-                    <div>
-                      <span>
-                        <i className="small-dot pale" />
-                        Daily goal
-                      </span>
-                      <strong>
-                        {summary ? number(goal) : "—"}
-                        <small>{unit}</small>
-                      </strong>
-                    </div>
-                    <div>
-                      <span>
-                        <i className="small-dot green" />
-                        Activity added
-                      </span>
-                      <strong>
-                        {summary ? number(activity) : "—"}
-                        <small>{unit}</small>
-                      </strong>
-                    </div>
-                  </div>
+                  <p className="daily-goal">
+                    Daily goal{" "}
+                    <strong>
+                      {summary ? number(goal) : "—"} {unit}
+                    </strong>
+                  </p>
                   <div className="macro-list">
                     {[
-                      { name: "Carbs", key: "nutrient.carb", color: "orange" },
+                      { name: "Carbs", key: "nutrient.carb" },
                       {
                         name: "Protein",
                         key: "nutrient.protein",
-                        color: "purple",
                       },
-                      { name: "Fat", key: "nutrient.fat", color: "green" },
+                      { name: "Fat", key: "nutrient.fat" },
                     ].map((macro) => {
                       const value = totals[macro.key] ?? 0;
                       const target = summary?.goals[macro.key] ?? 0;
@@ -646,7 +678,7 @@ export default function Desk() {
                               </small>
                             </span>
                           </div>
-                          <div className={`progress ${macro.color}`}>
+                          <div className="progress">
                             <span style={{ width }} />
                           </div>
                         </div>
@@ -663,14 +695,19 @@ export default function Desk() {
               {meals.map((item) => {
                 const entries =
                   day?.entries.filter((entry) => entry.meal === item.id) ?? [];
-                const Icon = item.icon;
                 const mealEnergy =
                   summary?.meals[item.id]?.nutrients["energy.energy"] ?? 0;
+                const mealGoal = summary?.meals[item.id]?.energy_goal ?? 0;
+                const mealFilled =
+                  mealGoal > 0 ? Math.min(mealEnergy / mealGoal, 1) : 0;
+                const mealStyle: React.CSSProperties & {
+                  "--meal-progress": string;
+                } = { "--meal-progress": `${mealFilled * 360}deg` };
                 return (
                   <section className="card meal-card" key={item.id}>
                     <div className="meal-header">
-                      <span className={`meal-icon ${item.color}`}>
-                        <Icon size={20} />
+                      <span className="meal-icon" style={mealStyle}>
+                        <span aria-hidden="true">{item.emoji}</span>
                       </span>
                       <div className="meal-title">
                         <h3>{item.label}</h3>
@@ -730,9 +767,13 @@ export default function Desk() {
               {session.connected ? (
                 <section className="connection-card">
                   <span className="round-icon">
-                    <CheckCircle2 size={24} />
+                    <img
+                      className="connected-mascot"
+                      src="/yettie.webp"
+                      alt=""
+                    />
                   </span>
-                  <div className="eyebrow">ALL IN ONE PLACE</div>
+                  <div className="eyebrow">YOUR YAZIO COMPANION</div>
                   <h2>Hello, {session.profile?.first_name}.</h2>
                   <p>
                     Your diary changes sync directly with YAZIO. Pick a date,
@@ -748,28 +789,12 @@ export default function Desk() {
                 </section>
               ) : (
                 <section className="connection-card">
-                  <div className="connection-art" aria-hidden="true">
-                    <div className="art-window">
-                      <span />
-                      <span />
-                      <span />
-                      <div>
-                        <Leaf size={25} />
-                        <i />
-                        <i />
-                      </div>
-                    </div>
-                    <div className="art-link">
-                      <Link2 size={18} />
-                    </div>
-                    <div className="art-phone">
-                      <Leaf size={21} />
-                      <span />
-                      <span />
-                    </div>
-                    <Sparkles className="art-spark" size={19} />
-                  </div>
-                  <div className="eyebrow">SAME DIARY. MORE SPACE.</div>
+                  <img
+                    className="connection-mascot"
+                    src="/yettie.webp"
+                    alt="YAZIO’s Yettie mascot waving"
+                  />
+                  <div className="eyebrow">YOUR YAZIO COMPANION</div>
                   <h2>
                     Your YAZIO,
                     <br />

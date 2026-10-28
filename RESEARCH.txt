@@ -49,3 +49,15 @@ No account mutations were performed during research or automated testing. No use
 Supplemental primary implementation source
 https://github.com/yazio-community/yazio-api-specification (MIT)
 The community describes its own observed traffic; it is not official YAZIO documentation. It informed uncaptured payload details and was cross-checked with APK serializers and anonymous live product endpoints where possible. API contracts can change without notice. No alternative endpoint generations or authentication fallbacks are included.
+
+Visual theme update — 28 October 2026
+The desktop theme now follows the current official website and public app mockups:
+https://www.yazio.com/en
+https://www.yazio.com/_nuxt/entry.C7z-HPI9.css
+https://www.yazio.com/app/fonts/yazio-sans.css
+https://www.yazio.com/app/fonts/rubik/latin.css
+https://images.yazio-cdn.com/process/w:720/q:80/plain/frontend/web/mockups/diary-en.png@webp
+https://images.yazio-cdn.com/process/w:720/q:80/plain/frontend/web/mockups/water-tracker-en.png@webp
+https://images.yazio-cdn.com/process/w:320/q:85/plain/frontend/web/general/yettie-waving-no-movement.png@webp
+
+The light/dark palette uses YAZIO’s published Yettie design tokens, with Yazio Sans headings and Rubik body text. The fonts and public Yettie image are stored locally for the private app. The display theme follows the device preference initially and can be changed with the moon/sun button; the selected mode is remembered in this browser. The product remains labeled as an independent companion.
