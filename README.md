@@ -53,6 +53,8 @@ Test fixtures use synthetic sessions and mocked requests. They cover connection 
 
 Load the built extension to test browser behavior. A normal website tab does not have extension APIs and is not a supported runtime.
 
+The sidebar holds navigation, account status/settings, and the theme switch. The diary has no separate header bar or persistent sync badge. Branding comes from `app/brand.svg`: Vite shares it between the sidebar and favicon, and the build renders the toolbar PNG icons from that same source.
+
 ## API research
 
 See `RESEARCH.txt` for APK evidence and endpoint mapping. This tool uses an unofficial private API that YAZIO may change. It is independent of YAZIO. The former hosted version is retained in Git history, not as a second runtime in this project.

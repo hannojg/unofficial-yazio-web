@@ -3,11 +3,9 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   Clock3,
   Droplets,
   Leaf,
@@ -17,7 +15,6 @@ import {
   Plus,
   Search,
   ShieldCheck,
-  Sparkles,
   Sun,
   Moon,
   Trash2,
@@ -35,6 +32,7 @@ import type {
 import type { RecentProduct } from "../lib/recent-products";
 import type { Session } from "../extension/messages";
 import { request, subscribe } from "../extension/client";
+import brandIcon from "./brand.svg";
 
 type Selected = { id: string; product: Product };
 type Theme = "light" | "dark";
@@ -448,51 +446,73 @@ export default function Desk() {
       ? "Your daily hydration"
       : `of ${waterGoal / 1000} L goal`;
 
+  let connectionLabel = "Not connected";
+  if (booting) connectionLabel = "Checking…";
+  else if (pairing) connectionLabel = "Signing in…";
+  else if (session.connected) connectionLabel = "Connected";
+  const themeAction =
+    theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <aside className="sidebar" aria-label="App navigation">
         <a
           className="brand"
           href="./index.html"
           aria-label="Nutrition Desk home"
         >
-          <span className="brand-mark">
-            <BookOpen size={23} strokeWidth={2.6} />
-          </span>
+          <img
+            className="brand-mark"
+            src={brandIcon}
+            alt=""
+            width="42"
+            height="42"
+          />
           <span>
             nutrition<span className="brand-second">desk</span>
           </span>
         </a>
         <div className="sidebar-label">YOUR SPACE</div>
-        <button className="nav active" onClick={() => setDate(today)}>
-          <BookOpen size={19} />
-          Food diary
-          <span className="nav-dot" />
-        </button>
-        <button className="nav" onClick={() => setSetup(true)}>
-          <Link2 size={19} />
-          Your connection
-        </button>
+        <nav className="primary-navigation" aria-label="Main navigation">
+          <button
+            className="nav active"
+            onClick={() => setDate(today)}
+            aria-current="page"
+            aria-label="Food diary"
+            title="Food diary"
+          >
+            <BookOpen size={19} />
+            <span className="nav-copy">Food diary</span>
+          </button>
+        </nav>
         <div className="side-bottom">
-          <div className="side-note">
-            <span className="note-icon">
-              <Sparkles size={19} />
+          <button
+            className="nav account-nav"
+            onClick={() => setSetup(true)}
+            aria-label={`YAZIO account: ${connectionLabel}`}
+            title={`YAZIO account: ${connectionLabel}`}
+          >
+            <Link2 size={19} />
+            <span className="nav-copy">
+              <span>YAZIO account</span>
+              <small>{connectionLabel}</small>
             </span>
-            <strong>
-              Little habits.
-              <br />
-              Big progress.
-            </strong>
-            <p>
-              Your YAZIO diary.
-              <br />
-              Made for the big screen.
-            </p>
-          </div>
-          <button className="nav help" onClick={() => setSetup(true)}>
-            <CircleHelp size={18} />
-            How it works
-            <ArrowRight size={15} />
+            <span
+              className="account-status"
+              data-connected={session.connected}
+              aria-hidden="true"
+            />
+          </button>
+          <button
+            className="nav theme-nav"
+            onClick={toggleTheme}
+            aria-label={themeAction}
+            title={themeAction}
+          >
+            {theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
+            <span className="nav-copy">
+              {theme === "light" ? "Dark theme" : "Light theme"}
+            </span>
           </button>
           <div className="private-note">
             <ShieldCheck size={14} />
@@ -506,59 +526,26 @@ export default function Desk() {
       </aside>
 
       <main>
-        <header className="topbar">
-          <div className="breadcrumb">
-            Nutrition Desk <span>/</span> <strong>Diary</strong>
-          </div>
-          <div className="header-actions">
-            <button
-              className="theme-button"
-              onClick={toggleTheme}
-              aria-label={
-                theme === "light"
-                  ? "Switch to dark theme"
-                  : "Switch to light theme"
-              }
-            >
-              {theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
-            </button>
-            <button
-              className={`connection-pill ${session.connected ? "connected" : ""}`}
-              onClick={() => setSetup(true)}
-            >
-              <span />
-              {booting
-                ? "Checking connection"
-                : session.connected
-                  ? "Connected to YAZIO"
-                  : "YAZIO not connected"}
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </header>
         <div className="workspace">
           <section className="page-heading">
             <div>
               <div className="eyebrow">YOUR EVERYDAY, A LITTLE BETTER</div>
               <h1>
-                Your food diary<span>.</span>
+                {greeting}
+                <span>.</span>
               </h1>
               <p>Small steps. Healthy habits. All in one place.</p>
             </div>
-            <button
-              className="primary"
-              onClick={() =>
-                session.connected ? openSearch("lunch") : connect()
-              }
-              disabled={booting || pairing}
-            >
-              <Plus size={18} />
-              {session.connected
-                ? "Log food"
-                : pairing
-                  ? "Waiting for sign-in…"
-                  : "Connect YAZIO"}
-            </button>
+            {session.connected && (
+              <button
+                className="primary"
+                onClick={() => openSearch("lunch")}
+                disabled={pairing}
+              >
+                <Plus size={18} />
+                Log food
+              </button>
+            )}
           </section>
           {error && (
             <div className="error-banner" role="alert">
@@ -568,325 +555,302 @@ export default function Desk() {
               </button>
             </div>
           )}
-          <div className="date-row">
-            <div className="date-navigation">
-              <button
-                onClick={() => shiftDate(-1)}
-                aria-label="Previous day"
-                disabled={!date}
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <label className="date-label">
-                {dateLabel}
-                <input
-                  aria-label="Diary date"
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                />
-              </label>
-              <button
-                onClick={() => shiftDate(1)}
-                aria-label="Next day"
-                disabled={!date}
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-            <button
-              className={`today ${date === today ? "selected" : ""}`}
-              onClick={() => setDate(today)}
-            >
-              Today
-            </button>
-            <span className="sync-note">
-              {loading ? (
-                <>
-                  <LoaderCircle className="spin" size={13} /> Syncing your diary
-                </>
-              ) : session.connected ? (
-                <>
-                  <Check size={13} /> Synced with YAZIO
-                </>
-              ) : (
-                "Your diary will appear here"
-              )}
-            </span>
-          </div>
-
-          <div className="content-grid">
-            <div className="diary-column">
-              <section className="card overview">
-                <div className="card-heading">
-                  <h2>Summary</h2>
-                  <span className="subtle-label">{unit.toUpperCase()}</span>
-                </div>
-                <div className="overview-body">
-                  <div className="energy-stats">
-                    <div className="energy-stat">
-                      <strong>{summary ? number(eaten) : "—"}</strong>
-                      <span>Eaten</span>
-                    </div>
-                    <div className="energy-ring">
-                      <svg
-                        viewBox="0 0 180 180"
-                        className="energy-arc"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          className="ring-track"
-                          cx="90"
-                          cy="90"
-                          r="72"
-                          pathLength="100"
-                          strokeDasharray="75 100"
-                          transform="rotate(135 90 90)"
-                        />
-                        <circle
-                          className="ring-fill"
-                          cx="90"
-                          cy="90"
-                          r="72"
-                          pathLength="100"
-                          strokeDasharray={ringDash}
-                          transform="rotate(135 90 90)"
-                        />
-                      </svg>
-                      <div className="ring-copy">
-                        <strong>
-                          {summary ? number(absoluteRemaining) : "—"}
-                        </strong>
-                        <span>
-                          {remaining < 0 ? "Above goal" : "Remaining"}
-                        </span>
-                        <small>{unit}</small>
-                      </div>
-                    </div>
-                    <div className="energy-stat">
-                      <strong>{summary ? number(activity) : "—"}</strong>
-                      <span>Activity added</span>
-                    </div>
-                  </div>
-                  <p className="daily-goal">
-                    Daily goal{" "}
-                    <strong>
-                      {summary ? number(goal) : "—"} {unit}
-                    </strong>
-                  </p>
-                  <div className="macro-list">
-                    {[
-                      { name: "Carbs", key: "nutrient.carb" },
-                      {
-                        name: "Protein",
-                        key: "nutrient.protein",
-                      },
-                      { name: "Fat", key: "nutrient.fat" },
-                    ].map((macro) => {
-                      const value = totals[macro.key] ?? 0;
-                      const target = summary?.goals[macro.key] ?? 0;
-                      const percent =
-                        target > 0 ? Math.min((value / target) * 100, 100) : 0;
-                      const width = `${percent}%`;
-                      return (
-                        <div className="macro" key={macro.key}>
-                          <div>
-                            <span>{macro.name}</span>
-                            <span>
-                              <strong>{summary ? number(value) : "—"}</strong>
-                              <small>
-                                {" "}
-                                / {summary ? number(target) : "—"} g
-                              </small>
-                            </span>
-                          </div>
-                          <div className="progress">
-                            <span style={{ width }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </section>
-
-              <div className="section-title">
-                <h2>{greeting}</h2>
-                <span>ONE MEAL AT A TIME</span>
+          {session.connected && (
+            <div className="date-row">
+              <div className="date-navigation">
+                <button
+                  onClick={() => shiftDate(-1)}
+                  aria-label="Previous day"
+                  disabled={!date}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <label className="date-label">
+                  {dateLabel}
+                  <input
+                    aria-label="Diary date"
+                    type="date"
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                </label>
+                <button
+                  onClick={() => shiftDate(1)}
+                  aria-label="Next day"
+                  disabled={!date}
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
-              {meals.map((item) => {
-                const entries =
-                  day?.entries.filter((entry) => entry.meal === item.id) ?? [];
-                const mealEnergy =
-                  summary?.meals[item.id]?.nutrients["energy.energy"] ?? 0;
-                const mealGoal = summary?.meals[item.id]?.energy_goal ?? 0;
-                const mealFilled =
-                  mealGoal > 0 ? Math.min(mealEnergy / mealGoal, 1) : 0;
-                const mealStyle: React.CSSProperties & {
-                  "--meal-progress": string;
-                } = { "--meal-progress": `${mealFilled * 360}deg` };
-                return (
-                  <section className="card meal-card" key={item.id}>
-                    <div className="meal-header">
-                      <span className="meal-icon" style={mealStyle}>
-                        <span aria-hidden="true">{item.emoji}</span>
-                      </span>
-                      <div className="meal-title">
-                        <h3>{item.label}</h3>
-                        <span>
-                          {summary
-                            ? `${number(mealEnergy)} ${unit}`
-                            : "Ready when you are"}
-                        </span>
-                      </div>
-                      <button
-                        className="add-button"
-                        disabled={!session.connected || loading}
-                        onClick={() => openSearch(item.id)}
-                        aria-label={`Add food to ${item.label}`}
-                      >
-                        <Plus size={19} />
-                      </button>
-                    </div>
-                    {entries.length > 0 ? (
-                      <div className="entries">
-                        {entries.map((entry) => (
-                          <div className="entry" key={entry.id}>
-                            <div>
-                              <strong>{entry.name}</strong>
-                              <span>{entry.description}</span>
-                            </div>
-                            <span>
-                              {entry.energy === null
-                                ? "—"
-                                : number(entry.energy)}{" "}
-                              <small>{unit}</small>
-                            </span>
-                            <button
-                              className="delete-button"
-                              aria-label={`Remove ${entry.name}`}
-                              onClick={() => setRemoving(entry)}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="empty-meal">
-                        {loading
-                          ? "Loading your entries…"
-                          : session.connected
-                            ? "Nothing logged yet. What’s on the menu?"
-                            : "Connect your account to see this meal."}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
+              <button
+                className={`today ${date === today ? "selected" : ""}`}
+                onClick={() => setDate(today)}
+              >
+                Today
+              </button>
+              {loading && (
+                <span className="diary-loading" role="status">
+                  <LoaderCircle className="spin" size={13} /> Updating diary…
+                </span>
+              )}
             </div>
-            <aside className="right-column">
-              {session.connected ? (
-                <section className="connection-card">
-                  <span className="round-icon">
-                    <img
-                      className="connected-mascot"
-                      src="/yettie.webp"
-                      alt=""
-                    />
-                  </span>
-                  <div className="eyebrow">YOUR YAZIO COMPANION</div>
-                  <h2>Hello, {session.profile?.first_name}.</h2>
-                  <p>
-                    Your diary changes sync directly with YAZIO. Pick a date,
-                    find your food, and make yourself at home.
-                  </p>
+          )}
+
+          {booting ? (
+            <div className="workspace-loading" role="status">
+              <LoaderCircle className="spin" size={20} /> Opening your diary…
+            </div>
+          ) : session.connected ? (
+            <div className="content-grid">
+              <div className="diary-column">
+                <section className="card overview">
+                  <div className="card-heading">
+                    <h2>Summary</h2>
+                    <span className="subtle-label">{unit.toUpperCase()}</span>
+                  </div>
+                  <div className="overview-body">
+                    <div className="energy-stats">
+                      <div className="energy-stat">
+                        <strong>{summary ? number(eaten) : "—"}</strong>
+                        <span>Eaten</span>
+                      </div>
+                      <div className="energy-ring">
+                        <svg
+                          viewBox="0 0 180 180"
+                          className="energy-arc"
+                          aria-hidden="true"
+                        >
+                          <circle
+                            className="ring-track"
+                            cx="90"
+                            cy="90"
+                            r="72"
+                            pathLength="100"
+                            strokeDasharray="75 100"
+                            transform="rotate(135 90 90)"
+                          />
+                          <circle
+                            className="ring-fill"
+                            cx="90"
+                            cy="90"
+                            r="72"
+                            pathLength="100"
+                            strokeDasharray={ringDash}
+                            transform="rotate(135 90 90)"
+                          />
+                        </svg>
+                        <div className="ring-copy">
+                          <strong>
+                            {summary ? number(absoluteRemaining) : "—"}
+                          </strong>
+                          <span>
+                            {remaining < 0 ? "Above goal" : "Remaining"}
+                          </span>
+                          <small>{unit}</small>
+                        </div>
+                      </div>
+                      <div className="energy-stat">
+                        <strong>{summary ? number(activity) : "—"}</strong>
+                        <span>Activity added</span>
+                      </div>
+                    </div>
+                    <p className="daily-goal">
+                      Daily goal{" "}
+                      <strong>
+                        {summary ? number(goal) : "—"} {unit}
+                      </strong>
+                    </p>
+                    <div className="macro-list">
+                      {[
+                        { name: "Carbs", key: "nutrient.carb" },
+                        {
+                          name: "Protein",
+                          key: "nutrient.protein",
+                        },
+                        { name: "Fat", key: "nutrient.fat" },
+                      ].map((macro) => {
+                        const value = totals[macro.key] ?? 0;
+                        const target = summary?.goals[macro.key] ?? 0;
+                        const percent =
+                          target > 0
+                            ? Math.min((value / target) * 100, 100)
+                            : 0;
+                        const width = `${percent}%`;
+                        return (
+                          <div className="macro" key={macro.key}>
+                            <div>
+                              <span>{macro.name}</span>
+                              <span>
+                                <strong>{summary ? number(value) : "—"}</strong>
+                                <small>
+                                  {" "}
+                                  / {summary ? number(target) : "—"} g
+                                </small>
+                              </span>
+                            </div>
+                            <div className="progress">
+                              <span style={{ width }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+
+                <div className="section-title">
+                  <h2>Meals</h2>
+                  <span>ONE MEAL AT A TIME</span>
+                </div>
+                {meals.map((item) => {
+                  const entries =
+                    day?.entries.filter((entry) => entry.meal === item.id) ??
+                    [];
+                  const mealEnergy =
+                    summary?.meals[item.id]?.nutrients["energy.energy"] ?? 0;
+                  const mealGoal = summary?.meals[item.id]?.energy_goal ?? 0;
+                  const mealFilled =
+                    mealGoal > 0 ? Math.min(mealEnergy / mealGoal, 1) : 0;
+                  const mealStyle: React.CSSProperties & {
+                    "--meal-progress": string;
+                  } = { "--meal-progress": `${mealFilled * 360}deg` };
+                  return (
+                    <section className="card meal-card" key={item.id}>
+                      <div className="meal-header">
+                        <span className="meal-icon" style={mealStyle}>
+                          <span aria-hidden="true">{item.emoji}</span>
+                        </span>
+                        <div className="meal-title">
+                          <h3>{item.label}</h3>
+                          <span>
+                            {summary
+                              ? `${number(mealEnergy)} ${unit}`
+                              : "Ready when you are"}
+                          </span>
+                        </div>
+                        <button
+                          className="add-button"
+                          disabled={!session.connected || loading}
+                          onClick={() => openSearch(item.id)}
+                          aria-label={`Add food to ${item.label}`}
+                        >
+                          <Plus size={19} />
+                        </button>
+                      </div>
+                      {entries.length > 0 ? (
+                        <div className="entries">
+                          {entries.map((entry) => (
+                            <div className="entry" key={entry.id}>
+                              <div>
+                                <strong>{entry.name}</strong>
+                                <span>{entry.description}</span>
+                              </div>
+                              <span>
+                                {entry.energy === null
+                                  ? "—"
+                                  : number(entry.energy)}{" "}
+                                <small>{unit}</small>
+                              </span>
+                              <button
+                                className="delete-button"
+                                aria-label={`Remove ${entry.name}`}
+                                onClick={() => setRemoving(entry)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-meal">
+                          {loading
+                            ? "Loading your entries…"
+                            : session.connected
+                              ? "Nothing logged yet. What’s on the menu?"
+                              : "Connect your account to see this meal."}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+              <aside className="right-column">
+                <section className="card water-card">
+                  <div className="card-heading">
+                    <h2>
+                      <Droplets size={19} />
+                      Stay hydrated
+                    </h2>
+                  </div>
+                  <div className="water-value">
+                    {waterLabel}
+                    <span>{waterGoalLabel}</span>
+                  </div>
+                  <div className="water-glasses" aria-hidden="true">
+                    {Array.from({ length: 8 }, (_, index) => (
+                      <span
+                        key={index}
+                        className={
+                          water !== undefined && water >= (index + 1) * 250
+                            ? "filled"
+                            : ""
+                        }
+                      >
+                        <i />
+                      </span>
+                    ))}
+                  </div>
                   <button
-                    className="text-button"
-                    onClick={() => setSetup(true)}
+                    className="secondary full"
+                    disabled={!day || busy || loading}
+                    onClick={addWater}
                   >
-                    Manage connection
-                    <ArrowRight size={16} />
+                    <Plus size={16} />
+                    250 ml
                   </button>
                 </section>
-              ) : (
-                <section className="connection-card">
-                  <img
-                    className="connection-mascot"
-                    src="/yettie.webp"
-                    alt="YAZIO’s Yettie mascot waving"
-                  />
-                  <div className="eyebrow">YOUR YAZIO COMPANION</div>
-                  <h2>
-                    Your YAZIO,
-                    <br />
-                    at your desk.
-                  </h2>
+                <div className="quiet-note">
+                  <Leaf size={17} />
                   <p>
-                    Bring your food diary to the big screen. Sign in on YAZIO
-                    and pick up right here.
+                    Small steps.
+                    <br />
+                    <strong>A little better, every day.</strong>
                   </p>
+                </div>
+              </aside>
+            </div>
+          ) : (
+            <section className="connect-welcome">
+              <div>
+                <div className="eyebrow">YOUR YAZIO COMPANION</div>
+                <h2>Your YAZIO, at your desk.</h2>
+                <p>
+                  Connect your account to see your meals, recent foods, and
+                  daily goals in one place.
+                </p>
+                <div className="welcome-actions">
                   <button
-                    className="primary full"
+                    className="primary"
                     onClick={connect}
-                    disabled={booting || pairing}
+                    disabled={pairing}
                   >
                     {pairing ? (
                       <LoaderCircle className="spin" size={17} />
                     ) : (
                       <Link2 size={17} />
                     )}
-                    {pairing
-                      ? "Finish signing in on YAZIO"
-                      : "Connect your account"}
-                    {pairing ? null : <ArrowRight size={16} />}
+                    {pairing ? "Waiting for sign-in…" : "Connect YAZIO"}
                   </button>
-                </section>
-              )}
-              <section className="card water-card">
-                <div className="card-heading">
-                  <h2>
-                    <Droplets size={19} />
-                    Stay hydrated
-                  </h2>
+                  {pairing && (
+                    <button className="text-button" onClick={cancelPair}>
+                      Cancel sign-in
+                    </button>
+                  )}
                 </div>
-                <div className="water-value">
-                  {waterLabel}
-                  <span>{waterGoalLabel}</span>
-                </div>
-                <div className="water-glasses" aria-hidden="true">
-                  {Array.from({ length: 8 }, (_, index) => (
-                    <span
-                      key={index}
-                      className={
-                        water !== undefined && water >= (index + 1) * 250
-                          ? "filled"
-                          : ""
-                      }
-                    >
-                      <i />
-                    </span>
-                  ))}
-                </div>
-                <button
-                  className="secondary full"
-                  disabled={!day || busy || loading}
-                  onClick={addWater}
-                >
-                  <Plus size={16} />
-                  250 ml
-                </button>
-              </section>
-              <div className="quiet-note">
-                <Leaf size={17} />
-                <p>
-                  Small steps.
-                  <br />
-                  <strong>A little better, every day.</strong>
-                </p>
               </div>
-            </aside>
-          </div>
+              <img src="./yettie.webp" alt="YAZIO’s Yettie mascot waving" />
+            </section>
+          )}
           <footer>
             <span>Made for your everyday.</span>
             <span>
