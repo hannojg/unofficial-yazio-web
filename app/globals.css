@@ -1760,3 +1760,44 @@ input::placeholder {
     transition: none !important;
   }
 }
+.recents-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 7px 0 6px;
+}
+.recents-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 13px/1.5 var(--font-sans);
+}
+.recents-heading h3 svg {
+  color: var(--action);
+}
+.recents-heading > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.recent-energy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+  color: var(--ink);
+}
+.recent-energy small {
+  font-size: 9px;
+  color: var(--secondary);
+  margin-top: 1px;
+}
+.recent-error {
+  padding: 30px 5px;
+  color: var(--error);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.recent-error .text-button {
+  margin-top: 12px;
+}

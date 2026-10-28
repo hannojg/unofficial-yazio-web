@@ -12,6 +12,7 @@ import {
   upstream,
 } from "../../../lib/yazio";
 import type { Entry } from "../../../lib/yazio";
+import { loadRecentProducts } from "../../../lib/recent-products";
 import {
   assertOrigin,
   beginPair,
@@ -30,7 +31,7 @@ const uuidSchema = text.uuid();
 const positiveAmount = numeric.positive();
 const foodAmountSchema = positiveAmount.max(100000);
 const nonNegativeAmount = numeric.min(0);
-const waterAmountSchema = nonNegativeAmount.max(20);
+const waterAmountSchema = nonNegativeAmount.max(20000);
 const minimumQuery = text.min(2);
 const querySchema = minimumQuery.max(160);
 const bucketSchema = z.enum(["products", "recipe_portions", "simple_products"]);
@@ -42,7 +43,7 @@ const entrySchema = z.object({
   date: dateSchema,
 });
 const deletionSchema = z.object({ id: uuidSchema, bucket: bucketSchema });
-const waterSchema = z.object({ date: dateSchema, amount: waterAmountSchema });
+const waterSchema = z.object({ date: dateSchema, amountMl: waterAmountSchema });
 const recipeSchema = z.object({ name: text });
 
 function json(value: unknown, status = 200) {
@@ -136,6 +137,10 @@ async function handle(request: Request) {
       }
       return json({ summary, entries });
     }
+    if (path === "/api/recents" && request.method === "GET") {
+      const products = await loadRecentProducts(api);
+      return json(products);
+    }
     if (path === "/api/search" && request.method === "GET") {
       const queryParameter = url.searchParams.get("q");
       const query = querySchema.parse(queryParameter);
@@ -190,7 +195,7 @@ async function handle(request: Request) {
       const raw = await request.json();
       const water = waterSchema.parse(raw);
       const body = JSON.stringify([
-        { date: water.date, water_intake: water.amount },
+        { date: water.date, water_intake: water.amountMl },
       ]);
       await api("/user/water-intake", { method: "POST", body });
       return json({ saved: true });

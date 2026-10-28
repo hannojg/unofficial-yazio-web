@@ -27,7 +27,7 @@ GET /products/{uuid} — product nutrients and base unit
 GET /recipes/{uuid} — recipe name
 POST /user/consumed-items — products array with UUID, product_id, amount, daytime, full local date-time, nullable serving fields
 DELETE /user/consumed-items — JSON object with bucket name mapping to a SINGLE entry UUID string
-POST /user/water-intake — array with date and absolute water_intake in liters
+POST /user/water-intake — array with date and absolute water_intake in millilitres
 POST https://www.yazio.com/api/auth/token — refresh grant for the website client
 
 Live verification completed
@@ -61,3 +61,11 @@ https://images.yazio-cdn.com/process/w:720/q:80/plain/frontend/web/mockups/water
 https://images.yazio-cdn.com/process/w:320/q:85/plain/frontend/web/general/yettie-waving-no-movement.png@webp
 
 The light/dark palette uses YAZIO’s published Yettie design tokens, with Yazio Sans headings and Rubik body text. The fonts and public Yettie image are stored locally for the private app. The display theme follows the device preference initially and can be changed with the moon/sun button; the selected mode is remembered in this browser. The product remains labeled as an independent companion.
+
+
+Recents and water units — 28 October 2026
+Android fz3.c fetches GET /v22/user/consumed-items/latest?limit=1..500. The response is a flat list of typed diary items (product, simple_product, recipe_portion), with local date-time and the logged amount. Android gv case 21 wraps this as consumedItems3 cached state; u65.f groups regular products by product ID and retains their newest logged item. The web picker uses that same history endpoint, deduplicates regular foods by newest date-time, and shows up to 40 recent foods from all meals. Choosing one opens a portion review with its latest quantity prefilled. Recipe and quick-entry history are separate from the regular-food recents list.
+
+The live endpoint requires authentication (anonymous probe: 401). Four automated recents tests verify ordering, deduplication, latest quantities, empty history, and error behavior. Authenticated UI verification follows publication.
+
+Water correction: APK avj.WaterAmount names its numeric value mlValue, and WaterUnit defaults to Milliliter. The connected account's goal is 2000, representing 2 L. Previous research incorrectly described litres at the API boundary. The UI now divides the display by 1000; a 250 ml glass increments the raw amount by 250. The private web endpoint accepts amountMl explicitly and forwards millilitres to YAZIO. No hydration data was changed while investigating.

@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  Clock3,
   Droplets,
   Leaf,
   Link2,
@@ -34,6 +35,8 @@ import type {
   Profile,
   SearchProduct,
 } from "../lib/yazio";
+
+import type { RecentProduct } from "../lib/recent-products";
 
 type Session = { connected: boolean; profile?: Profile };
 type Selected = { id: string; product: Product };
@@ -100,6 +103,10 @@ export default function Desk() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchProduct[]>([]);
   const [searching, setSearching] = useState(false);
+  const [recents, setRecents] = useState<RecentProduct[]>([]);
+  const [loadingRecents, setLoadingRecents] = useState(false);
+  const [recentError, setRecentError] = useState("");
+  const [recentRevision, setRecentRevision] = useState(0);
   const [selected, setSelected] = useState<Selected | null>(null);
   const [amount, setAmount] = useState("100");
   const [busy, setBusy] = useState(false);
@@ -224,6 +231,36 @@ export default function Desk() {
   }, [query, selected, searchOpen, reportError]);
 
   useEffect(() => {
+    if (!searchOpen || !session.connected) {
+      setRecents([]);
+      return;
+    }
+    const controller = new AbortController();
+    setLoadingRecents(true);
+    setRecentError("");
+    async function loadRecents() {
+      try {
+        const next = await request<RecentProduct[]>(
+          "/api/recents",
+          "GET",
+          undefined,
+          controller.signal,
+        );
+        setRecents(next);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const text = message(error);
+          setRecentError(text);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoadingRecents(false);
+      }
+    }
+    void loadRecents();
+    return () => controller.abort();
+  }, [searchOpen, session.connected, revision, recentRevision]);
+
+  useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 5000);
     return () => clearTimeout(timer);
@@ -325,6 +362,12 @@ export default function Desk() {
     setSearchOpen(true);
   }
 
+  function selectRecent(result: RecentProduct) {
+    setSelected({ id: result.product_id, product: result.product });
+    const quantity = String(result.amount);
+    setAmount(quantity);
+  }
+
   async function selectProduct(result: SearchProduct) {
     setBusy(true);
     try {
@@ -383,9 +426,9 @@ export default function Desk() {
   async function addWater() {
     if (!day) return;
     setBusy(true);
-    const amount = day.summary.water_intake + 0.25;
+    const amountMl = day.summary.water_intake + 250;
     try {
-      await request("/api/water", "POST", { date, amount });
+      await request("/api/water", "POST", { date, amountMl });
       setRevision((value) => value + 1);
       setNotice("250 ml of water logged.");
     } catch (error) {
@@ -430,9 +473,11 @@ export default function Desk() {
   const waterLabel =
     water === undefined
       ? "—"
-      : `${water.toLocaleString(undefined, { maximumFractionDigits: 2 })} L`;
+      : `${(water / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} L`;
   const waterGoalLabel =
-    waterGoal === undefined ? "Your daily hydration" : `of ${waterGoal} L goal`;
+    waterGoal === undefined
+      ? "Your daily hydration"
+      : `of ${waterGoal / 1000} L goal`;
 
   return (
     <div className="shell">
@@ -841,7 +886,7 @@ export default function Desk() {
                     <span
                       key={index}
                       className={
-                        water !== undefined && water >= (index + 1) * 0.25
+                        water !== undefined && water >= (index + 1) * 250
                           ? "filled"
                           : ""
                       }
@@ -1113,6 +1158,74 @@ export default function Desk() {
                   {searching && <LoaderCircle className="spin" size={17} />}
                 </label>
                 <div className="search-results">
+                  {query.trim().length === 0 && (
+                    <>
+                      <div className="recents-heading">
+                        <h3>
+                          <Clock3 size={17} />
+                          Recent foods
+                        </h3>
+                        <span>From all meals</span>
+                      </div>
+                      {loadingRecents ? (
+                        <div className="search-empty">
+                          <LoaderCircle className="spin" size={26} />
+                          <h3>Loading your recents…</h3>
+                          <p>Getting your latest foods from YAZIO.</p>
+                        </div>
+                      ) : recentError ? (
+                        <div className="recent-error" role="alert">
+                          <p>{recentError}</p>
+                          <button
+                            className="text-button"
+                            onClick={() =>
+                              setRecentRevision((value) => value + 1)
+                            }
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      ) : recents.length > 0 ? (
+                        recents.map((recent) => {
+                          const energyPerUnit =
+                            recent.product.nutrients["energy.energy"] ?? 0;
+                          const energy = number(energyPerUnit * recent.amount);
+                          return (
+                            <button
+                              className="search-result recent-result"
+                              key={recent.product_id}
+                              onClick={() => selectRecent(recent)}
+                              disabled={busy}
+                            >
+                              <span className="food-symbol">
+                                <Clock3 size={19} />
+                              </span>
+                              <span>
+                                <strong>{recent.product.name}</strong>
+                                <small>
+                                  {recent.amount} {recent.product.base_unit}
+                                  {recent.product.producer
+                                    ? ` · ${recent.product.producer}`
+                                    : ""}
+                                </small>
+                              </span>
+                              <span className="recent-energy">
+                                {energy}
+                                <small>kcal</small>
+                              </span>
+                              <ChevronRight size={17} />
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="search-empty">
+                          <Clock3 size={30} />
+                          <h3>A fresh start</h3>
+                          <p>Foods you log in YAZIO will appear here.</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                   {results.map((result) => (
                     <button
                       className="search-result"
@@ -1133,7 +1246,7 @@ export default function Desk() {
                       <Plus size={17} />
                     </button>
                   ))}
-                  {results.length === 0 && (
+                  {query.trim().length > 0 && results.length === 0 && (
                     <div className="search-empty">
                       <Search size={30} />
                       <h3>
@@ -1141,12 +1254,12 @@ export default function Desk() {
                           ? "Finding your food…"
                           : query.length >= 2
                             ? "No foods found"
-                            : "Find your next bite"}
+                            : "Keep typing…"}
                       </h3>
                       <p>
                         {query.length >= 2
                           ? "Try another name or brand."
-                          : "Search YAZIO’s food database to get started."}
+                          : "Enter at least two characters to search YAZIO."}
                       </p>
                     </div>
                   )}

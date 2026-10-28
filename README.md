@@ -18,6 +18,7 @@ The Chrome/Edge helper is necessary because YAZIO’s Apple OAuth callback is re
 
 - Browse diary dates and daily energy / macro totals.
 - See products, recipes, and quick entries grouped by meal.
+- Open the food picker to see recent foods from your synced YAZIO history, with the last quantity prefilled.
 - Search the YAZIO database using your account’s food database country and sex.
 - Add a product by base quantity; review energy and macros before logging.
 - Remove entries with an explicit confirmation.
