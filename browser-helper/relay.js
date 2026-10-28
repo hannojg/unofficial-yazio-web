@@ -2,9 +2,11 @@
   const origin = window.location.origin;
   const isYazio = origin === "https://www.yazio.com";
   if (isYazio) {
-    document.addEventListener("nutrition-desk-token", (event) => {
+    document.addEventListener("nutrition-desk-token", async (event) => {
       const tokens = event.detail;
-      chrome.runtime.sendMessage({ type: "TOKEN_CAPTURED", tokens }).catch(() => {});
+      try {
+        await chrome.runtime.sendMessage({ type: "TOKEN_CAPTURED", tokens });
+      } catch {}
     });
     return;
   }
@@ -16,26 +18,47 @@
     if (event.data?.type === "ND_HELPER_PING") post("ND_HELPER_READY");
     if (event.data?.type === "ND_CONNECT") {
       try {
-        const result = await chrome.runtime.sendMessage({ type: "START_PAIR", nonce: event.data.nonce });
+        const result = await chrome.runtime.sendMessage({
+          type: "START_PAIR",
+          nonce: event.data.nonce,
+        });
         if (result.error) post("ND_ERROR", { error: result.error });
-      } catch { post("ND_ERROR", { error: "The helper could not open YAZIO. Reload this page and try again." }); }
+      } catch {
+        post("ND_ERROR", {
+          error:
+            "The helper could not open YAZIO. Reload this page and try again.",
+        });
+      }
     }
-    if (event.data?.type === "ND_CANCEL") await chrome.runtime.sendMessage({ type: "CANCEL_PAIR" });
+    if (event.data?.type === "ND_CANCEL")
+      await chrome.runtime.sendMessage({ type: "CANCEL_PAIR" });
   });
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || message.type !== "COMPLETE_PAIR") return;
-    const body = JSON.stringify({ ...message.tokens, nonce: message.nonce });
-    fetch("/api/session", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body })
-      .then(async (response) => {
+    if (sender.id !== chrome.runtime.id || message.type !== "COMPLETE_PAIR")
+      return;
+    async function complete() {
+      try {
+        const body = JSON.stringify({
+          ...message.tokens,
+          nonce: message.nonce,
+        });
+        const response = await fetch("/api/session", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error ?? "YAZIO could not be connected.");
+        if (!response.ok)
+          throw new Error(result.error ?? "YAZIO could not be connected.");
         post("ND_CONNECTED");
         sendResponse({ ok: true });
-      })
-      .catch((error) => {
+      } catch (error) {
         post("ND_ERROR", { error: error.message });
         sendResponse({ error: error.message });
-      });
+      }
+    }
+    void complete();
     return true;
   });
   post("ND_HELPER_READY");

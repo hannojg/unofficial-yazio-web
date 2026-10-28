@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Nutrition Desk · Your YAZIO companion",
-  description: "A little more room for your daily nutrition. Your private desktop companion for YAZIO.",
+  description:
+    "A little more room for your daily nutrition. Your private desktop companion for YAZIO.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
