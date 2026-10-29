@@ -1,10 +1,36 @@
-# (unofficial) yazio web
+<p align="center">
+  <img src="app/brand.svg" width="72" height="72" alt="" />
+</p>
 
-An unofficial YAZIO companion that runs entirely inside a Chrome or Edge extension. Click its toolbar icon to open your diary in a full-size tab. No web server, hosting account, ChatGPT sign-in, or runtime secrets are needed.
+<h1 align="center">(unofficial) yazio web</h1>
 
-Not affiliated with, endorsed by, or produced by YAZIO GmbH. A YAZIO account is required. The Chrome Web Store submission is being prepared; this repository currently supports installation from source.
+<p align="center"><strong>Your YAZIO food diary, made for the desktop.</strong></p>
+
+<p align="center">
+  Track meals, reuse recent foods, and follow your calories, macros, and water intake in a full-size browser tab.
+</p>
+
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/unofficial-yazio-web/coehalgcbbfhkjglfjnfenbpkaikbdln">
+    <img src="https://img.shields.io/badge/Install_from_the_Chrome_Web_Store-00b894?style=for-the-badge&amp;logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store" />
+  </a>
+</p>
+
+![The desktop diary showing daily calories, macro goals, meals, and water tracking](docs/images/diary.jpg)
+
+<p align="center"><sub>Sample diary with fictional data.</sub></p>
+
+Runs entirely inside a Chrome or Edge extension and syncs directly with YAZIO. Sign in through YAZIO's own website using your usual method. No companion server, advertising, or analytics.
+
+A YAZIO account is required. This is an independent project, not affiliated with, endorsed by, or produced by YAZIO GmbH.
 
 ## Install
+
+1. [Install from the Chrome Web Store](https://chromewebstore.google.com/detail/unofficial-yazio-web/coehalgcbbfhkjglfjnfenbpkaikbdln).
+2. Pin **(unofficial) yazio web** and click its toolbar icon to open your diary.
+3. Click **Connect YAZIO**. If you are already signed in on YAZIO, the existing session connects automatically. Otherwise, use your usual sign-in method in the YAZIO tab it opens.
+
+### Install from source
 
 Requires Node 22.13 or newer and Chrome / Edge 120 or newer.
 

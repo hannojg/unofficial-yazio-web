@@ -1,6 +1,6 @@
 # Chrome Web Store preparation
 
-Reviewed against Google's official documentation on October 28, 2026. Version 2.4.0 is a local submission candidate; it has not been submitted to or approved by Google.
+Reviewed against Google's official documentation on October 28, 2026. Version 2.4.1 is a local submission candidate; it has not been submitted to or approved by Google.
 
 ## Ready
 
@@ -13,12 +13,13 @@ Reviewed against Google's official documentation on October 28, 2026. Version 2.
 - Paytone One headings and Rubik body text with their OFL copyright/license notices bundled. The Yettie mascot and YAZIO Sans font are absent from the current source and package.
 - Tokens stay in trusted-context, in-memory session storage. Old persistent token records are deleted without import. Tests cover worker restarts, browser-session reset, legacy cleanup, and rotation without persistent writes.
 - Both Connect entry points describe sign-in-session and nutrition-data access before the action, explain when reconnection is needed, and link the privacy policy. The diary footer also links it.
+- Store images in local `outputs/chrome-web-store/`: a 128×128 PNG icon with 96×96 artwork and transparent padding, plus two 1280×800 JPEG screenshots of the diary and portion selector. Screenshots use a fictional sample account and synthetic nutrition data. The same padded icon is bundled in the extension.
 
 ## Before submission
 
 1. **Review privacy declarations.** The token-storage change and in-app disclosure are implemented; see the review below. Complete the store's data-use declarations to match the current behavior.
 2. **Review branding and listing.** The book icon is the project's own asset, and the current fonts are OFL-licensed. Older Git commits retain the prototype's YAZIO assets; those commits are not part of the extension package. Google's [impersonation and intellectual property policy](https://developer.chrome.com/docs/webstore/program-policies/impersonation-and-intellectual-property) still applies to the listing and product. The unofficial name and disclaimer do not establish rights to YAZIO's trademark or API.
-3. **Prepare public images.** Use synthetic nutrition data and a sample name, never the maintainer's live diary screenshots in ignored `outputs/`. Google requires a 128×128 PNG icon and at least one screenshot. Review icon padding and current [image requirements](https://developer.chrome.com/docs/webstore/images) before upload.
+3. **Upload public images.** Use `outputs/chrome-web-store/store-icon-128.png` and the two `screenshot-*.jpg` files. These follow Google's [image requirements](https://developer.chrome.com/docs/webstore/images). The folder and `outputs/chrome-web-store-assets.zip` are local, ignored artifacts; they contain no live account data.
 4. **Finish testing and reviewer access.** Review the privacy policy. In the developer dashboard, disclose authentication, identifying, health, and relevant website data accurately even though the maintainer receives none of it. Supply reviewer sign-in instructions and a disposable YAZIO test account if required. Do not share a personal account's tokens or credentials.
 5. **Use a publisher account.** [Register](https://developer.chrome.com/docs/webstore/register) if needed, pay Google's one-time registration fee, and enable [2-Step Verification](https://developer.chrome.com/docs/webstore/program-policies/two-step-verification). Account terms and payment must be handled by the publisher.
 6. **Upload and review.** Build the extension and ZIP the contents of `dist/`, with `manifest.json` at the archive root. Complete listing, privacy, distribution, and test instructions, then [submit for review](https://developer.chrome.com/docs/webstore/publish). Approval is Google's decision; deferred publishing allows a final release decision after review.
